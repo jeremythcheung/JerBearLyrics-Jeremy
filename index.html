@@ -316,11 +316,19 @@
     <div id="login-overlay">
         <div id="login-box">
             <h2>JerbearLyrics</h2>
-            <p>Sign in to continue</p>
+            <p id="login-subtitle">Sign in to continue</p>
+
             <input type="text" id="login-username" placeholder="Username" autocomplete="username" />
             <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" />
-            <button onclick="doLogin()">Sign In</button>
+            <input type="password" id="signup-confirm" placeholder="Confirm Password" autocomplete="new-password" style="display:none" />
+
+            <button id="auth-btn" onclick="doLogin()">Sign In</button>
             <div id="login-error"></div>
+
+            <p style="margin-top:16px; color:#888; font-size:0.88rem;">
+                <span id="toggle-text">Don't have an account?</span>
+                <a href="#" id="toggle-link" onclick="toggleMode(event)" style="color:#1db954; text-decoration:none; font-weight:600;"> Sign Up</a>
+            </p>
         </div>
     </div>
 
@@ -1503,18 +1511,56 @@
             navigator.serviceWorker.register('./sw.js');
         }
 
-        const USERS = { "jeremy": "jerbear" };
+        let isSignUp = false;
+
+        function getUsers() {
+            return JSON.parse(localStorage.getItem('jbl-users') || '{"jeremy":"jerbear"}');
+        }
+
+        function saveUsers(users) {
+            localStorage.setItem('jbl-users', JSON.stringify(users));
+        }
+
+        function unlockApp() {
+            sessionStorage.setItem('jbl-auth', '1');
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+        }
 
         function doLogin() {
             const user = document.getElementById('login-username').value.trim();
             const pass = document.getElementById('login-password').value;
-            if (USERS[user] && USERS[user] === pass) {
-                sessionStorage.setItem('jbl-auth', '1');
-                document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('main-content').style.display = 'block';
+            const err = document.getElementById('login-error');
+
+            if (isSignUp) {
+                const confirm = document.getElementById('signup-confirm').value;
+                if (!user || !pass) { err.textContent = 'Please fill in all fields.'; return; }
+                if (pass !== confirm) { err.textContent = 'Passwords do not match.'; return; }
+                const users = getUsers();
+                if (users[user]) { err.textContent = 'Username already taken.'; return; }
+                users[user] = pass;
+                saveUsers(users);
+                unlockApp();
             } else {
-                document.getElementById('login-error').textContent = 'Incorrect username or password.';
+                const users = getUsers();
+                if (users[user] && users[user] === pass) {
+                    unlockApp();
+                } else {
+                    err.textContent = 'Incorrect username or password.';
+                }
             }
+        }
+
+        function toggleMode(e) {
+            e.preventDefault();
+            isSignUp = !isSignUp;
+            document.getElementById('login-error').textContent = '';
+            document.getElementById('login-subtitle').textContent = isSignUp ? 'Create an account' : 'Sign in to continue';
+            document.getElementById('auth-btn').textContent = isSignUp ? 'Sign Up' : 'Sign In';
+            document.getElementById('auth-btn').onclick = doLogin;
+            document.getElementById('signup-confirm').style.display = isSignUp ? 'block' : 'none';
+            document.getElementById('toggle-text').textContent = isSignUp ? 'Already have an account?' : "Don't have an account?";
+            document.getElementById('toggle-link').textContent = isSignUp ? ' Sign In' : ' Sign Up';
         }
 
         document.getElementById('login-password').addEventListener('keydown', e => {
@@ -1522,8 +1568,7 @@
         });
 
         if (sessionStorage.getItem('jbl-auth') === '1') {
-            document.getElementById('login-overlay').style.display = 'none';
-            document.getElementById('main-content').style.display = 'block';
+            unlockApp();
         }
     </script>
 

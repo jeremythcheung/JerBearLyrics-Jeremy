@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1db954">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="JerbearLyrics">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src *; img-src 'self' data:;">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <title>JerbearLyrics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f0f0f;
+            color: #f0f0f0;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #1a1a1a;
+            padding: 30px 20px;
+            text-align: center;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1db954;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        .search-bar {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .search-bar input {
+            padding: 12px 18px;
+            font-size: 1rem;
+            border: 2px solid #2a2a2a;
+            border-radius: 30px;
+            background: #2a2a2a;
+            color: #f0f0f0;
+            outline: none;
+            width: 260px;
+            transition: border 0.2s;
+        }
+
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .search-bar input { width: 100%; max-width: 340px; }
+            .search-bar button { width: 100%; max-width: 340px; }
+            .search-bar { flex-direction: column; align-items: center; }
+            #lyrics-box { padding: 20px; font-size: 0.95rem; }
+        }
+
+        .search-bar input::placeholder {
+            color: #888;
+        }
+
+        .search-bar input:focus {
+            border-color: #1db954;
+        }
+
+        .search-bar button {
+            padding: 12px 28px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 30px;
+            background: #1db954;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .search-bar button:hover {
+            background: #17a348;
+        }
+
+        .lyrics-section {
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        #song-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #1db954;
+            margin-bottom: 6px;
+        }
+
+        #song-artist {
+            font-size: 1rem;
+            color: #aaa;
+            margin-bottom: 24px;
+        }
+
+        #lyrics-box {
+            white-space: pre-wrap;
+            line-height: 1.9;
+            font-size: 1rem;
+            color: #e0e0e0;
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid #2a2a2a;
+        }
+
+        #song-meta {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            padding: 14px 18px;
+            background: #1a1a1a;
+            border-radius: 10px;
+            border: 1px solid #2a2a2a;
+            font-size: 0.88rem;
+            color: #aaa;
+        }
+
+        #song-meta span strong {
+            color: #e0e0e0;
+            font-weight: 600;
+        }
+
+        #status {
+            text-align: center;
+            color: #888;
+            font-size: 1rem;
+            margin-top: 60px;
+        }
+
+        .error {
+            color: #e05555 !important;
+        }
+
+        .nursery-toggle {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 14px;
+            font-size: 0.9rem;
+            color: #aaa;
+            cursor: pointer;
+        }
+
+        .nursery-toggle input[type="checkbox"] {
+            accent-color: #1db954;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .nursery-toggle label {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .search-bar input:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .info-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .info-btn {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #1a6fcc;
+            color: #fff;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            line-height: 22px;
+            text-align: center;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .info-btn:hover .tooltip {
+            display: block;
+        }
+
+        .tooltip {
+            display: none;
+            position: absolute;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e2e;
+            color: #e0e0e0;
+            border: 1px solid #3a3a5a;
+            border-radius: 10px;
+            padding: 12px 16px;
+            width: 260px;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            text-align: left;
+            font-weight: 400;
+            z-index: 10;
+            white-space: normal;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #3a3a5a;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>JerbearLyrics</h1>
+        <div class="search-bar">
+            <input type="text" id="input-artist" placeholder="Artist name" />
+            <input type="text" id="input-song" placeholder="Song title" />
+            <button onclick="searchLyrics()">Search</button>
+        </div>
+        <div style="display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin-top:14px;">
+            <div class="nursery-toggle">
+                <input type="checkbox" id="nursery-mode" onchange="setMode('nursery')" />
+                <label for="nursery-mode">Nursery rhyme (no artist)</label>
+            </div>
+            <div class="nursery-toggle">
+                <input type="checkbox" id="movie-mode" onchange="setMode('movie')" />
+                <label for="movie-mode">Movie / TV show song</label>
+            </div>
+        </div>
+        <div class="info-wrapper">
+            <div class="info-btn">i
+                <div class="tooltip">
+                    <strong>Regular song:</strong><br>
+                    Type the artist &amp; song title, then Search.<br><br>
+                    <strong>Nursery rhyme:</strong><br>
+                    Check "Nursery rhyme", type the rhyme title only.<br><br>
+                    <strong>Movie / TV show song:</strong><br>
+                    Check "Movie / TV show song", type the <strong>movie or show name</strong> and <strong>song title</strong>.
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="lyrics-section">
+        <div id="status">Enter an artist and song title to find lyrics.</div>
+        <div id="result" style="display:none;">
+            <div id="song-title"></div>
+            <div id="song-artist"></div>
+            <div id="lyrics-box"></div>
+            <div id="song-meta" style="display:none;">
+                <span id="meta-artist"></span>
+                <span id="meta-date"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('input-song').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') searchLyrics();
+        });
+        document.getElementById('input-artist').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') searchLyrics();
+        });
+
+        const nurseryRhymes = {
+            "london bridge": `London Bridge is falling down,\nFalling down, falling down,\nLondon Bridge is falling down,\nMy fair lady.\n\nBuild it up with wood and clay,\nWood and clay, wood and clay,\nBuild it up with wood and clay,\nMy fair lady.\n\nWood and clay will wash away,\nWash away, wash away,\nWood and clay will wash away,\nMy fair lady.\n\nBuild it up with bricks and mortar,\nBricks and mortar, bricks and mortar,\nBuild it up with bricks and mortar,\nMy fair lady.\n\nBricks and mortar will not stay,\nWill not stay, will not stay,\nBricks and mortar will not stay,\nMy fair lady.\n\nBuild it up with iron and steel,\nIron and steel, iron and steel,\nBuild it up with iron and steel,\nMy fair lady.\n\nIron and steel will bend and bow,\nBend and bow, bend and bow,\nIron and steel will bend and bow,\nMy fair lady.\n\nBuild it up with silver and gold,\nSilver and gold, silver and gold,\nBuild it up with silver and gold,\nMy fair lady.\n\nSilver and gold will be stolen away,\nStolen away, stolen away,\nSilver and gold will be stolen away,\nMy fair lady.\n\nSet a man to watch all night,\nWatch all night, watch all night,\nSet a man to watch all night,\nMy fair lady.`,
+
+            "twinkle twinkle little star": `Twinkle, twinkle, little star,\nHow I wonder what you are!\nUp above the world so high,\nLike a diamond in the sky.\nTwinkle, twinkle, little star,\nHow I wonder what you are!\n\nWhen the blazing sun is gone,\nWhen he nothing shines upon,\nThen you show your little light,\nTwinkle, twinkle, through the night.\nTwinkle, twinkle, little star,\nHow I wonder what you are!\n\nIn the dark blue sky you keep,\nAnd often through my curtains peep,\nFor you never shut your eye\nTill the sun is in the sky.\nTwinkle, twinkle, little star,\nHow I wonder what you are!`,
+
+            "jack and jill": `Jack and Jill went up the hill\nTo fetch a pail of water.\nJack fell down and broke his crown,\nAnd Jill came tumbling after.\n\nUp Jack got and home did trot\nAs fast as he could caper.\nHe went to bed to mend his head\nWith vinegar and brown paper.`,
+
+            "humpty dumpty": `Humpty Dumpty sat on a wall,\nHumpty Dumpty had a great fall.\nAll the king's horses and all the king's men\nCouldn't put Humpty together again.`,
+
+            "baa baa black sheep": `Baa, baa, black sheep,\nHave you any wool?\nYes sir, yes sir,\nThree bags full!\nOne for the master,\nOne for the dame,\nAnd one for the little boy\nWho lives down the lane.`,
+
+            "mary had a little lamb": `Mary had a little lamb,\nIts fleece was white as snow,\nAnd everywhere that Mary went,\nThe lamb was sure to go.\n\nIt followed her to school one day,\nWhich was against the rule.\nIt made the children laugh and play\nTo see a lamb at school.\n\nAnd so the teacher turned it out,\nBut still it lingered near,\nAnd waited patiently about\nTill Mary did appear.`,
+
+            "itsy bitsy spider": `The itsy bitsy spider\nClimbed up the water spout.\nDown came the rain\nAnd washed the spider out.\nOut came the sun\nAnd dried up all the rain,\nAnd the itsy bitsy spider\nClimbed up the spout again.`,
+
+            "row row row your boat": `Row, row, row your boat\nGently down the stream.\nMerrily, merrily, merrily, merrily,\nLife is but a dream.`,
+
+            "ring around the rosie": `Ring around the rosie,\nA pocket full of posies,\nAshes, ashes,\nWe all fall down!`,
+
+            "hickory dickory dock": `Hickory dickory dock,\nThe mouse ran up the clock.\nThe clock struck one,\nThe mouse ran down,\nHickory dickory dock.`,
+
+            "little bo peep": `Little Bo Peep has lost her sheep\nAnd doesn't know where to find them.\nLeave them alone and they'll come home,\nWagging their tails behind them.`,
+
+            "hey diddle diddle": `Hey diddle diddle,\nThe cat and the fiddle,\nThe cow jumped over the moon.\nThe little dog laughed\nTo see such sport,\nAnd the dish ran away with the spoon.`,
+
+            "three blind mice": `Three blind mice, see how they run!\nThree blind mice, see how they run!\nThey all ran after the farmer's wife,\nWho cut off their tails with a carving knife.\nDid you ever see such a thing in your life\nAs three blind mice?`,
+
+            "little miss muffet": `Little Miss Muffet\nSat on a tuffet,\nEating her curds and whey.\nAlong came a spider\nWho sat down beside her\nAnd frightened Miss Muffet away.`,
+
+            "old macdonald": `Old MacDonald had a farm, E-I-E-I-O!\nAnd on his farm he had a cow, E-I-E-I-O!\nWith a moo moo here and a moo moo there,\nHere a moo, there a moo, everywhere a moo moo.\nOld MacDonald had a farm, E-I-E-I-O!\n\nOld MacDonald had a farm, E-I-E-I-O!\nAnd on his farm he had a pig, E-I-E-I-O!\nWith an oink oink here and an oink oink there,\nHere an oink, there an oink, everywhere an oink oink.\nOld MacDonald had a farm, E-I-E-I-O!\n\nOld MacDonald had a farm, E-I-E-I-O!\nAnd on his farm he had a duck, E-I-E-I-O!\nWith a quack quack here and a quack quack there,\nHere a quack, there a quack, everywhere a quack quack.\nOld MacDonald had a farm, E-I-E-I-O!`,
+
+            "rock a bye baby": `Rock-a-bye baby on the treetop,\nWhen the wind blows the cradle will rock.\nWhen the bough breaks the cradle will fall,\nAnd down will come baby, cradle and all.`,
+
+            "old mother hubbard": `Old Mother Hubbard\nWent to the cupboard\nTo give her poor dog a bone.\nBut when she got there\nThe cupboard was bare,\nAnd so the poor dog had none.`,
+
+            "yankee doodle": `Yankee Doodle went to town\nA-riding on a pony,\nStuck a feather in his cap\nAnd called it macaroni.\n\nYankee Doodle, keep it up,\nYankee Doodle dandy,\nMind the music and the step\nAnd with the girls be handy.`,
+
+            "pat a cake": `Pat-a-cake, pat-a-cake, baker's man,\nBake me a cake as fast as you can.\nPat it and prick it and mark it with B,\nAnd put it in the oven for baby and me.`,
+
+            "hot cross buns": `Hot cross buns! Hot cross buns!\nOne a penny, two a penny,\nHot cross buns!\nIf you have no daughters,\nGive them to your sons.\nOne a penny, two a penny,\nHot cross buns!`,
+
+            "this little piggy": `This little piggy went to market,\nThis little piggy stayed home,\nThis little piggy had roast beef,\nThis little piggy had none,\nAnd this little piggy cried wee wee wee,\nAll the way home.`
+        };
+
+        function numberToWords(n) {
+            if (n === 0) return 'zero';
+            const ones = ['','one','two','three','four','five','six','seven','eight','nine',
+                          'ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen',
+                          'seventeen','eighteen','nineteen'];
+            const tens = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+            function helper(x) {
+                if (x < 20)    return ones[x];
+                if (x < 100)   return tens[Math.floor(x/10)] + (x%10 ? ' '+ones[x%10] : '');
+                if (x < 1000)  return ones[Math.floor(x/100)] + ' hundred' + (x%100 ? ' and '+helper(x%100) : '');
+                if (x < 1e6)   return helper(Math.floor(x/1000)) + ' thousand' + (x%1000 ? ' '+helper(x%1000) : '');
+                return x.toString();
+            }
+            return helper(n);
+        }
+
+        function convertNumbersInTitle(title) {
+            return title.replace(/\d+/g, m => numberToWords(parseInt(m)));
+        }
+
+        async function fetchLyrics(artist, title) {
+            // Source 1: lyrics.ovh (suggest + fetch)
+            try {
+                const query = `${artist} ${title}`;
+                const suggestRes  = await fetch(`https://api.lyrics.ovh/suggest/${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(5000) });
+                const suggestData = await suggestRes.json();
+                let resolvedArtist = artist;
+                let resolvedTitle  = title;
+                if (suggestData.data && suggestData.data.length > 0) {
+                    resolvedArtist = suggestData.data[0].artist.name;
+                    resolvedTitle  = suggestData.data[0].title;
+                }
+                const lyricsRes  = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(resolvedArtist)}/${encodeURIComponent(resolvedTitle)}`, { signal: AbortSignal.timeout(5000) });
+                const lyricsData = await lyricsRes.json();
+                if (lyricsData.lyrics) {
+                    return { lyrics: lyricsData.lyrics.trim(), artist: resolvedArtist, title: resolvedTitle };
+                }
+            } catch (_) {}
+
+            // Source 2: lrclib.net (artist + title)
+            try {
+                const lrcRes  = await fetch(`https://lrclib.net/api/search?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`, { signal: AbortSignal.timeout(5000) });
+                const lrcData = await lrcRes.json();
+                if (Array.isArray(lrcData) && lrcData.length > 0) {
+                    const match  = lrcData[0];
+                    const lyrics = match.plainLyrics || match.syncedLyrics;
+                    if (lyrics) return { lyrics: lyrics.trim(), artist: match.artistName, title: match.trackName };
+                }
+            } catch (_) {}
+
+            // Source 2b: lrclib.net (title-only fallback — helps with TV/anime themes)
+            try {
+                const lrcRes  = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(title)}`, { signal: AbortSignal.timeout(5000) });
+                const lrcData = await lrcRes.json();
+                if (Array.isArray(lrcData) && lrcData.length > 0) {
+                    const match  = lrcData[0];
+                    const lyrics = match.plainLyrics || match.syncedLyrics;
+                    if (lyrics) return { lyrics: lyrics.trim(), artist: match.artistName, title: match.trackName };
+                }
+            } catch (_) {}
+
+            // Source 3: some-random-api (Genius-backed)
+            try {
+                const query   = encodeURIComponent(`${artist} ${title}`);
+                const sraRes  = await fetch(`https://some-random-api.com/lyrics?title=${query}`, { signal: AbortSignal.timeout(5000) });
+                const sraData = await sraRes.json();
+                if (sraData.lyrics && !sraData.error) {
+                    return { lyrics: sraData.lyrics.trim(), artist: sraData.author || artist, title: sraData.title || title };
+                }
+            } catch (_) {}
+
+            // Source 4: popcat.xyz (Genius-backed)
+            try {
+                const query    = encodeURIComponent(`${artist} ${title}`);
+                const popRes   = await fetch(`https://api.popcat.xyz/lyrics?song=${query}`, { signal: AbortSignal.timeout(5000) });
+                const popData  = await popRes.json();
+                if (popData.lyrics && !popData.error) {
+                    return { lyrics: popData.lyrics.trim(), artist: popData.artist || artist, title: popData.title || title };
+                }
+            } catch (_) {}
+
+            // Source 5: lyrist.vercel.app (Genius-backed, no CORS issues)
+            try {
+                const t = encodeURIComponent(title);
+                const a = encodeURIComponent(artist);
+                const lyristRes  = await fetch(`https://lyrist.vercel.app/api/${t}/${a}`, { signal: AbortSignal.timeout(5000) });
+                const lyristData = await lyristRes.json();
+                if (lyristData.lyrics && !lyristData.error) {
+                    return {
+                        lyrics: lyristData.lyrics.trim(),
+                        artist: lyristData.artist || artist,
+                        title:  lyristData.title  || title
+                    };
+                }
+            } catch (_) {}
+
+            // Source 5b: lyrist with title + "Pokemon anime theme" appended (helps find anime themes on Genius)
+            try {
+                const t = encodeURIComponent(`${title} Pokemon anime theme`);
+                const lyristRes  = await fetch(`https://lyrist.vercel.app/api/${t}`, { signal: AbortSignal.timeout(5000) });
+                const lyristData = await lyristRes.json();
+                if (lyristData.lyrics && !lyristData.error) {
+                    return {
+                        lyrics: lyristData.lyrics.trim(),
+                        artist: lyristData.artist || artist,
+                        title:  lyristData.title  || title
+                    };
+                }
+            } catch (_) {}
+
+            return null;
+        }
+
+        const pokemonThemes = [
+            // S1  — Indigo League
+            { season: 1,  shows: ['indigo league','original series','season 1'],                            songKeys: ['pokemon theme','gotta catch','theme song','original theme','s1 theme','season 1 theme'],   artist: 'Jason Paige',    title: 'Pokémon Theme' },
+            // S2  — Adventures in the Orange Islands
+            { season: 2,  shows: ['orange islands','adventures in the orange islands','season 2'],           songKeys: ['pokemon world','orange islands theme','s2 theme','season 2 theme'],                         artist: 'Billy Crawford', title: 'Pokémon World' },
+            // S3  — The Johto Journeys
+            { season: 3,  shows: ['johto journeys','the johto journeys','season 3'],                        songKeys: ['pokemon johto','johto theme','s3 theme','season 3 theme'],                                   artist: 'Billy Crawford', title: 'Pokémon Johto' },
+            // S4  — Johto League Champions
+            { season: 4,  shows: ['johto league champions','season 4'],                                     songKeys: ['pokemon johto remix','johto remix','s4 theme','season 4 theme'],                             artist: 'Billy Crawford', title: 'Pokémon Johto (Remix)' },
+            // S5  — Master Quest
+            { season: 5,  shows: ['master quest','season 5'],                                               songKeys: ['believe in me','master quest theme','s5 theme','season 5 theme'],                            artist: 'Billy Crawford', title: 'Believe in Me' },
+            // S6  — Advanced
+            { season: 6,  shows: ['advanced','season 6'],                                                   songKeys: ['i wanna be a hero','advanced theme','s6 theme','season 6 theme'],                            artist: 'David Rolfe',    title: 'I Wanna Be a Hero' },
+            // S7  — Advanced Challenge
+            { season: 7,  shows: ['advanced challenge','season 7'],                                         songKeys: ['this dream','advanced challenge theme','s7 theme','season 7 theme'],                         artist: 'David Rolfe',    title: 'This Dream' },
+            // S8  — Advanced Battle
+            { season: 8,  shows: ['advanced battle','season 8'],                                            songKeys: ['this dream remix','advanced battle theme','s8 theme','season 8 theme'],                      artist: 'David Rolfe',    title: 'This Dream (Remix)' },
+            // S9  — Battle Frontier
+            { season: 9,  shows: ['battle frontier','season 9'],                                            songKeys: ['battle frontier','s9 theme','season 9 theme'],                                              artist: 'David Rolfe',    title: 'Battle Frontier' },
+            // S10 — Diamond and Pearl
+            { season: 10, shows: ['diamond and pearl','dp','season 10'],                                    songKeys: ['diamond and pearl','dp theme','s10 theme','season 10 theme'],                                artist: 'Pokémon',        title: 'Diamond and Pearl' },
+            // S11 — DP: Battle Dimension
+            { season: 11, shows: ['dp battle dimension','battle dimension','season 11'],                    songKeys: ['we will be heroes','battle dimension theme','s11 theme','season 11 theme'],                   artist: 'Pokémon',        title: 'We Will Be Heroes' },
+            // S12 — DP: Galactic Battles
+            { season: 12, shows: ['dp galactic battles','galactic battles','season 12'],                    songKeys: ['battle cry','stand up','galactic battles theme','s12 theme','season 12 theme'],               artist: 'Pokémon',        title: 'Battle Cry - (Stand Up!)' },
+            // S13 — DP: Sinnoh League Victors
+            { season: 13, shows: ['sinnoh league victors','season 13'],                                     songKeys: ['we will carry on','sinnoh theme','s13 theme','season 13 theme'],                             artist: 'Pokémon',        title: 'We Will Carry On' },
+            // S14 — Black & White
+            { season: 14, shows: ['black and white','black & white','season 14'],                           songKeys: ['black and white','black & white','bw theme','s14 theme','season 14 theme'],                  artist: 'Ed Goldfarb',    title: 'Black & White' },
+            // S15 — BW: Rival Destinies
+            { season: 15, shows: ['rival destinies','bw rival destinies','season 15'],                      songKeys: ['rival destinies','s15 theme','season 15 theme'],                                            artist: 'Ed Goldfarb',    title: 'Rival Destinies' },
+            // S16 — BW: Adventures in Unova and Beyond
+            { season: 16, shows: ['adventures in unova','unova and beyond','unova','season 16'],             songKeys: ["it's always you and me",'unova theme','s16 theme','season 16 theme'],                        artist: 'Ed Goldfarb',    title: "It's Always You and Me" },
+            // S17 — XY
+            { season: 17, shows: ['xy','season 17'],                                                        songKeys: ['pokemon theme version xy','version xy','xy theme','s17 theme','season 17 theme'],            artist: 'Ben Dixon',      title: 'Pokémon Theme (Version XY)' },
+            // S18 — XY: Kalos Quest
+            { season: 18, shows: ['kalos quest','xy kalos quest','season 18'],                              songKeys: ['be a hero','kalos quest theme','s18 theme','season 18 theme'],                               artist: 'Ben Dixon',      title: 'Be a Hero' },
+            // S19 — XYZ
+            { season: 19, shows: ['xyz','season 19'],                                                       songKeys: ['stand tall','xyz theme','s19 theme','season 19 theme'],                                     artist: 'Ben Dixon',      title: 'Stand Tall' },
+            // S20 — Sun & Moon
+            { season: 20, shows: ['sun and moon','sun & moon','season 20'],                                 songKeys: ['under the alolan sun','sun and moon theme','s20 theme','season 20 theme'],                   artist: 'Pokémon',        title: 'Under the Alolan Sun' },
+            // S21 — SM: Ultra Adventures
+            { season: 21, shows: ['ultra adventures','sm ultra adventures','season 21'],                    songKeys: ['under the alolan moon','ultra adventures theme','s21 theme','season 21 theme'],               artist: 'Pokémon',        title: 'Under the Alolan Moon' },
+            // S22 — SM: Ultra Legends
+            { season: 22, shows: ['ultra legends','sm ultra legends','season 22'],                          songKeys: ['challenge of life','ultra legends theme','s22 theme','season 22 theme'],                     artist: 'Pokémon',        title: 'Challenge of Life' },
+            // S23 — Journeys
+            { season: 23, shows: ['journeys','pokemon journeys','season 23'],                               songKeys: ['the journey starts today','journey starts today','journeys theme','s23 theme','season 23 theme'], artist: 'Pokémon',   title: 'The Journey Starts Today' },
+            // S24 — Master Journeys
+            { season: 24, shows: ['master journeys','season 24'],                                           songKeys: ['journey to your heart','master journeys theme','s24 theme','season 24 theme'],               artist: 'Pokémon',        title: 'Journey to Your Heart' },
+            // S25 — Ultimate Journeys
+            { season: 25, shows: ['ultimate journeys','season 25'],                                         songKeys: ['with you','ultimate journeys theme','s25 theme','season 25 theme'],                          artist: 'Pokémon',        title: 'With You' },
+            // S26 — Horizons: The Series (EN S1, HZ001–HZ045)
+            { season: 26, shows: ['horizons','horizons the series','season 26','horizons season 1'],        songKeys: ['becoming me','horizons theme','s26 theme','season 26 theme'],                                artist: 'Pokémon',        title: 'Becoming Me' },
+            // S26 Asia ENG S1
+            { season: 26, shows: ['horizons','horizons the series'],                                        songKeys: ['we go','we go english'],                                                                    artist: 'Pokémon',        title: 'We Go (English Ver.)' },
+            // S26 — Horizons Season 2: The Search for Laqua (EN S2, HZ046–HZ089)
+            { season: 26, shows: ['horizons season 2','search for laqua','laqua'],                         songKeys: ['my favorite pokemon','search for laqua theme','horizons s2 theme'],                          artist: 'Pokémon',        title: 'My Favorite Pokémon' },
+            // S26 — Horizons Season 3: Rising Hope (EN S3, HZ090+)
+            { season: 26, shows: ['horizons season 3','rising hope'],                                       songKeys: ['evolving again','rising hope theme','horizons s3 theme'],                                   artist: 'Pokémon',        title: 'Evolving Again' },
+
+            // Japanese arcs (Pocket Monsters Horizons)
+            // Liko and Roy's Departure (HZ001–HZ025)
+            { season: 26, shows: ['liko and roy','liko roy','pocket monsters horizons'],                   songKeys: ['heart-pounding diary','heart pounding diary','liko roy opening'],                            artist: 'Pokémon',        title: 'Heart-Pounding Diary' },
+            // The Sparkling of Terapagos (HZ026–HZ045)
+            { season: 26, shows: ['sparkling of terapagos','terapagos'],                                   songKeys: ['halo','terapagos opening'],                                                                 artist: 'Pokémon',        title: 'Halo (English Version)' },
+            // Terastal Debut (HZ046–HZ067)
+            { season: 26, shows: ['terastal debut','terastal'],                                             songKeys: ['will','terastal opening'],                                                                  artist: 'Pokémon',        title: 'Will (English Version)' },
+            // Rayquaza Rising (HZ068–HZ089)
+            { season: 26, shows: ['rayquaza rising','rayquaza'],                                            songKeys: ['only one story','rayquaza opening'],                                                        artist: 'Pokémon',        title: 'Only One Story (English Version)', meta: { artist: 'Zerobaseone', date: 'October 10, 2024' } },
+            // Mega Voltage (HZ090–HZ111)
+            { season: 26, shows: ['mega voltage'],                                                          songKeys: ['get back','mega voltage opening'],                                                          artist: 'Pokémon',        title: 'GET BACK' },
+            // Rising Again (HZ115+)
+            { season: 26, shows: ['rising again'],                                                          songKeys: ['iolite','rising again opening'],                                                            artist: 'Pokémon',        title: 'Iolite (English Version)', meta: { artist: 'Eve', date: 'November 1, 2025' } },
+
+            // Ending themes
+            { season: 26, shows: ['liko and roy','pocket monsters horizons','horizons'],                   songKeys: ['rvr','rising volt tacklers rap','rvr rap'],                                                  artist: 'Pokémon',        title: 'RVR ~Rising Volt Tacklers Rap~' },
+            { season: 26, shows: ['terastal debut'],                                                        songKeys: ['let me battle'],                                                                            artist: 'Pokémon',        title: 'Let me battle' },
+            { season: 26, shows: ['rayquaza rising'],                                                       songKeys: ['sparkle','sparkle ending'],                                                                 artist: 'Pokémon',        title: 'Sparkle!' },
+            { season: 26, shows: ['mega voltage'],                                                          songKeys: ['ready go','ready go ending'],                                                               artist: 'Pokémon',        title: 'Ready Go' },
+            { season: 26, shows: ['mega evolution','episode mega evolution'],                               songKeys: ['yuu','mega evolution ending'],                                                              artist: 'Pokémon',        title: 'YUU' },
+            { season: 26, shows: ['rising again'],                                                          songKeys: ['asleep or awake'],                                                                          artist: 'Pokémon',        title: 'Asleep or Awake' },
+        ];
+
+        const pokemonLyrics = {
+            'my favorite pokemon': [
+                "Hey!",
+                "We're the champions",
+                "Another battle won",
+                "(I can't choose only one)",
+                "We are so great together",
+                "You're my favorite Pokémon",
+                "",
+                "Believe me",
+                "(Together forever is our)",
+                "Destiny",
+                "(Destiny)",
+                "Victory",
+                "(Victory)",
+                "True story",
+                "(True story)",
+                "(You're all you're all you're all",
+                "You're all my favorite Pokémon)",
+                "",
+                "What an amazing feeling",
+                "When we sing our song",
+                "(Everybody c'mon!)",
+                "Let's be a team forever",
+                "You're my favorite Pokémon",
+                "You're all my favorite Pokémon",
+                "",
+                "Together forever is our",
+                "Destiny",
+                "(Forever is our…)",
+                "You're all you're all my favorite Pokémon",
+                "I can't choose only I can't choose only",
+                "I can't choose only one (one one one)",
+                "Together forever is our",
+                "Destiny",
+                "Victory",
+                "True story (true story)",
+                "True story!",
+                "",
+                "Believe me",
+                "(Together forever is our)",
+                "Destiny",
+                "(Destiny)",
+                "Victory",
+                "(Victory)",
+                "True story",
+                "(True story)",
+                "(You're all you're all you're all",
+                "You're all my favorite Pokémon)",
+                "",
+                "What an amazing feeling",
+                "When we sing our song",
+                "(Everybody c'mon!)",
+                "Let's be a team forever",
+                "You're my favorite Pokémon",
+                "You're all my favorite Pokémon",
+                "",
+                "Pokémon! ♪"
+            ].join('\n'),
+            14: [
+                "It's always hard,",
+                "When the journey begins.",
+                "Hard to find your way;",
+                "Hard to make amends.",
+                "But there's nothing you can't do,",
+                "'Cause you've got the power inside of you.",
+                "",
+                "It's never easy,",
+                "To make a choice:",
+                "To keep things inside,",
+                "Or raise your voice.",
+                "But for everyone there comes a time",
+                "When the light inside begins to shine.",
+                "",
+                "It's not always right or wrong,",
+                "As long as your spirit's strong.",
+                "It's not always win or lose,",
+                "It's the road you choose;",
+                "The answer's within.",
+                "",
+                "It's not always black and white,",
+                "But your heart always knows what's right.",
+                "Let the journey begin—",
+                "",
+                "So many choices;",
+                "How do we know?",
+                "So many places;",
+                "Where do we go?",
+                "What should I say?",
+                "What should I do?",
+                "Still, we're together: me and you!",
+                "",
+                "It's not always right or wrong,",
+                "As long as your spirit's strong.",
+                "It's not always win or lose,",
+                "It's the road you choose;",
+                "The answer's within.",
+                "",
+                "It's not always black and white,",
+                "But your heart always knows what's right.",
+                "Let the journey begin:",
+                "Pokémon!",
+                "",
+                "There's nothing you can't do,",
+                "'Cause you've got the power inside of you.",
+                "It's not always right or wrong,",
+                "As long as your spirit's strong.",
+                "It's not always win or lose,",
+                "It's the road you choose;",
+                "The answer's within.",
+                "",
+                "It's not always black and white,",
+                "But your heart always knows what's right.",
+                "Let the journey begin:",
+                "Pokémon!"
+            ].join('\n'),
+            'iolite': [
+                "Surrounded by questions with no answers, I took a step forward",
+                "Unknown to anyone, A secret message hides in this story that begins",
+                "Even if it's a detour, It's actually the shortest route",
+                "With fear and excitement tucked away in my pocket, I just kept on running",
+                "",
+                "The tears you cry, Let me hear them",
+                "This is an adventure we can't get through alone",
+                "Now we are just Heading to where THE WIND LEADS US",
+                "",
+                "The iolite born from our encounter",
+                "They resonate with each other in battle",
+                "Having you by my side",
+                "Just that alone, Made me feel like I could go anywhere",
+                "",
+                "The answer is within me",
+                "The world has always been in the palm of my hand",
+                "Just having you with me",
+                "It makes my heart leap with joy",
+                "",
+                "My heart gently sways as I turn my gaze to you",
+                "There's no reason I can find yet my heart races",
+                "The compass just kept pointing the way We didn't know how to stop",
+                "Embracing unseen winds and unseen hopes PLEASE DON'T LET IT END YET!",
+                "",
+                "The one thing I can't forget",
+                "Is the impulse that moved my heart",
+                "The fact that all things come to an end",
+                "Is the magic that makes this moment shine",
+                "",
+                "Those gentle eyes of yours",
+                "Are proof of the pain you've carried",
+                "The feeling of believing",
+                "It's the gift I received from you",
+                "",
+                "So that's why",
+                "",
+                "The tears you cry, Let me hear them",
+                "This is an adventure we can't get through alone",
+                "Now we are just Heading to where THE WIND LEADS US",
+                "",
+                "The iolite born from our encounter",
+                "They resonate with each other in battle",
+                "Having you by my side",
+                "Just that alone, Made me feel like I could go anywhere",
+                "",
+                "The answer is within me",
+                "The world has always been in the palm of my hand",
+                "Just having you with me",
+                "It makes my heart leap with joy",
+                "",
+                "The answer inside me, It shines a light upon this journey"
+            ].join('\n'),
+            'will': [
+                "Together, We challenge, To the future (Let's go!)",
+                "We gather, Let's catch it, To tomorrow (Come on, let's go!)",
+                "Never give up, no matter how much we fall, stand up",
+                "Yeah, yeah, yeah, yeah, yeah (Take a step forward and go!)",
+                "",
+                "(hey buddy)",
+                "Imagine and dream with my friend (oh)",
+                "The light that lies ahead is dazzling",
+                "",
+                "If I could get carried away",
+                "The rest would be easy, just leave it to me",
+                "It's a story of you and me moving forward (oh oh)",
+                "",
+                "We understand each other better (We are)",
+                "A little more than yesterday (Best friends)",
+                "Let's make our debut into the new world with you",
+                "",
+                "We're the challengers",
+                "It's beginning to turn, our destiny's adventure",
+                "We're the challengers",
+                "Look at me and tell me",
+                "(hey buddy, let's go)",
+                "",
+                "We are buddy-buddy-buddies, To our overflowing dreams",
+                "If you wish for it, it will come true",
+                "Gather up, Challenger",
+                "Now, to a shining tomorrow",
+                "Jump into that wide open sky",
+                "Sparkling Challenger",
+                "",
+                "Together, We challenge, To the future (Let's go!)",
+                "Yeah, yeah, yeah, yeah, yeah (Take a step forward and go!)",
+                "",
+                "(hey buddy)",
+                "The outline that adults can't draw (yuh)",
+                "1,2,3 and 4",
+                "Paint it vividly (hey hey hey)",
+                "Curiosity that's about to burst",
+                "With feelings that began to resonate",
+                "Yeah we gotta do do",
+                "You know Who who's gonna keep you higher that sky above",
+                "(oh oh)",
+                "",
+                "It feels tighter than usual (We go)",
+                "Hold my hand gently (Higher)",
+                "Let's go through the unknown stage with you",
+                "",
+                "Never givin' up",
+                "To where I long for, if it's just the two of us",
+                "Never givin' up",
+                "Let's hear it, fairytale",
+                "(hey buddy, let's go)",
+                "",
+                "Ain't nobody-body-body gonna stop us, let's go",
+                "You and Me running so fast",
+                "That nobody can stop us",
+                "Look, to a fluttering dream",
+                "Lean in close with a free heart",
+                "Unpretentious, You and Me",
+                "",
+                "When this dream",
+                "Becomes a reality someday",
+                "Stand by my side",
+                "If you're here with me",
+                "I'm not afraid",
+                "Hey buddy",
+                "Go up to the top",
+                "Keep on keep on keep on going forward",
+                "Go up to the top",
+                "If I'm with you",
+                "",
+                "We are buddy-buddy-buddies, To our overflowing dreams",
+                "If you wish for it, it will come true",
+                "Gather up, Challenger",
+                "Now, to a shining tomorrow",
+                "Jump into that wide open sky",
+                "Sparkling Challenger",
+                "",
+                "We're the challengers",
+                "Take my hand, Flying up up up higher",
+                "We're the challengers",
+                "Yeah, yeah, yeah, yeah, yeah (Take a step forward and go!)",
+                "",
+                "Let's challenge"
+            ].join('\n'),
+            'halo': [
+                "Come on, break through the clouds ahead",
+                "",
+                "When I remember the words I couldn't say",
+                "I dove down to hide myself",
+                "Swimming my way through in uncertainty",
+                "I cut through the clouds and head for the blue sky",
+                "",
+                "One day, I'll look back",
+                "At that fiery red sunset",
+                "And burn it all into memory",
+                "",
+                "Even if I can't reach the truth of the world",
+                "Or the feelings of that girl",
+                "It's okay to not understand",
+                "Just shine like a rainbow",
+                "",
+                "Come on, break through the clouds ahead",
+                "Even if we stumble and stagger",
+                "Just hold on and go farther",
+                "Come on, run on to my future",
+                "",
+                "At the end of this long, long journey",
+                "I'll remember you",
+                "One day, we'll shake hands",
+                "And laugh",
+                "",
+                "The sun beats down",
+                "On the burning concrete",
+                "Wearing my functional sneakers",
+                "I skip through the air like a blimp",
+                "",
+                "One day, we would joke around",
+                "And sing our dream song together",
+                "Having kept it in my pocket all this time",
+                "",
+                "Come on, sing to the stars beyond",
+                "When I've been happy and when I've been sad",
+                "In the days that I cried thousands of times",
+                "Come on, be proud at the end of the rainbow",
+                "I have something to tell you",
+                "",
+                "(Hello, hello)",
+                "The sound of the clock",
+                "(Hello, hello)",
+                "Stop the video",
+                "(Hello, hello)",
+                "Brush those teeth",
+                "(Hello, hello)",
+                "Went to sleep",
+                "(Hello, hello)",
+                "How are you doing?",
+                "(Hello, hello)",
+                "I hope you're well",
+                "(Hello, hello)",
+                "With your song",
+                "Let's go together",
+                "",
+                "Come on, break through the clouds ahead",
+                "Even if we stumble and stagger",
+                "Just hold on and go farther",
+                "Come on, run to my future",
+                "There's still a long way to go",
+                "Come on, let's see the rest of our dream",
+                "",
+                "One day, the rainbow flower",
+                "That we've cherished so much will bloom",
+                "So let's walk",
+                "So that we never lose it",
+                "",
+                "A light appeared at the end of the rainbow",
+                "And I found my dream"
+            ].join('\n'),
+            'heart-pounding diary': [
+                "I'm starting to take a ride on this heart-pounding wave",
+                "I'll go far, yeah, yeah, yeah, yeah, yeah, yeah, yeah",
+                "There's a lot of things I can't really put into words",
+                "Things that make me sad, always troubling my heart",
+                "But somehow I'll know I'll shine on today",
+                "Look at the flowers blooming, now it's time to play!",
+                "I'm running through a white fog everyday",
+                "Nothing more priceless than what I'm looking for (uh)",
+                "It's this super-duper energetic-looking diary",
+                "But I said, \"what's this?\" and then I threw it away",
+                "No way, no way, no way, no way, no...",
+                "My heart was so dark and empty then",
+                "Whoa-oh-oh-oh-oh-oh-oh",
+                "But now I know I can change \"No way\" to \"It's possible\"",
+                "Floating around on this feel-good wind",
+                "Even if it's gonna be really super tough",
+                "I'll try my best to fly!",
+                "And so, I'm riding on this heart-pounding wave!",
+                "But I'm sure that, yeah, yeah, yeah, yeah, yeah, yeah, yeah",
+                "I won't let stories I don't get scare me",
+                "In my sparkling daydreams, the world starts to dance!",
+                "So let's smile, yeah, yeah, yeah, yeah, yeah, yeah, yeah",
+                "Because there's no time to be afraid, yeah",
+                "I just wanna know myself!",
+                "Because there's still a lot, a lot, a lot I don't know, know, know, know",
+                "I just wanna find myself!",
+                "If I can find it in myself to say \"I'm off now\"",
+                "Then I guess I'll know I've grown up a bit, yeah",
+                "I'm nervous, so I'll take a deep breath",
+                "Everything feels like it's becoming way harder",
+                "There are no dreams written in my boring handwriting",
+                "Hey, I think I found the \"me\" that I hate",
+                "Wrapping myself in a black fog everyday",
+                "Getting stuck in the rain, I just wanna go home (oh)",
+                "Back to my super-duper energetic-looking diary",
+                "Getting excited now, and I'm running off into...",
+                "Oh well, oh well, oh well, oh well, oh",
+                "Racing around, my heart is pounding",
+                "Whoa-oh-oh-oh-oh-oh-oh, I don't wanna lose my favorite accessories",
+                "Whoa-oh-oh-oh-oh-oh-oh, there's still so many things that I have yet to learn, yeah",
+                "Whoa-oh-oh-oh-oh-oh-oh, I wanna feel like this, always forever",
+                "I just wanna shine just like that star (ah)",
+                "I'm being captivated by this heart-pounding wave!",
+                "I knew it, yeah, yeah, yeah, yeah, yeah, yeah, yeah",
+                "It's all the fault of the answerless world I'm living in",
+                "Even if my future's super great, I'm not gonna change",
+                "So I'll yell \"yeah, yeah, yeah, yeah, yeah, yeah, yeah\"",
+                "I'm just gonna be me!",
+                "Before I get off this heart-pounding wave",
+                "Yeah, yeah, yeah, yeah, yeah, yeah, yeah",
+                "I'm waiting for my unknown story to be told, now",
+                "If I'm a little brave, who knows what I can change!",
+                "And hey, there's a really important story I gotta tell",
+                "About how I'm looking for something that's not quite here",
+                "So I'm heading off on a journey",
+                "And someday I know I'll return back home",
+                "By then I'll have grown up some more"
+            ].join('\n'),
+            'only one story': [
+                "Even if it becomes an endless adventure, I don't care",
+                "The day I step forward following the light",
+                "I want to keep going without stopping",
+                "Even if I get hurt, it doesn't matter if you're by my side",
+                "",
+                "Ah, before I know it, my sighs are getting longer again",
+                "In my clouded heart, it rains again",
+                "I look around but I can't see a single rainbow, Always",
+                "",
+                "Ah, but take a step forward",
+                "Towards the world that is spread out before my eyes",
+                "I'm walking little by little",
+                "",
+                "At the promised place, I wrote my wish, I want to meet you",
+                "When I release that wish and hold it in my eyes",
+                "My heart beats",
+                "At the future I had drawn",
+                "It feels I can definitely reach it",
+                "",
+                "Even if it becomes an endless adventure, I don't care",
+                "I know I'm not alone, listen",
+                "Yeah yeah oh",
+                "Write down the story of you and the Only One",
+                "",
+                "Starlight shines on me with blue hue",
+                "The day I step forward following the light",
+                "I want to keep going without stopping",
+                "Even if I get hurt, it doesn't matter if you're by my side",
+                "",
+                "Ah, the wind blowing towards me from afar",
+                "I leave my body there and take a step each day",
+                "Up towards the sparkling future",
+                "",
+                "Before I know it, my heart has become clear",
+                "The courage that I can do it",
+                "When I walk, following the voices I hear",
+                "My heart beats, My way",
+                "My heart is excited and fluttering",
+                "It feels like I'm with you",
+                "",
+                "Even if sadness returns, it's okay",
+                "If you listen to the ringing sound, before you know it",
+                "Yeah yeah oh",
+                "Together, Only One's Story will shine",
+                "",
+                "On the day darkness comes again",
+                "I close my eyes and we are together",
+                "After holding your hand",
+                "I want to promise you that I'll never let go again",
+                "",
+                "I feel like it's going to overflow, Oh yeah, My heart",
+                "I just want to let it out and tell you",
+                "I'm following you and",
+                "Continuing to walk",
+                "",
+                "Even if it becomes an endless adventure, I don't care",
+                "I know I'm not alone, listen",
+                "Yeah yeah oh",
+                "Write down the story of you and the Only One",
+                "",
+                "Starlight shines on me with blue hue",
+                "The day I step forward following the light",
+                "I want to keep going without stopping",
+                "Even if I get hurt, it doesn't matter if you're by my side",
+            ].join('\n'),
+            'evolving again': [
+                "We awoke from our dream",
+                "Where we knew",
+                "Anything was possible",
+                "Now that seems so long ago",
+                "And what's coming?",
+                "I don't know",
+                "",
+                "Just when",
+                "I feel like",
+                "I'm making",
+                "New friends",
+                "Everything changes",
+                "Could this be",
+                "The end?",
+                "Or are we evolving again?",
+                "",
+                "I'm always growing, changing",
+                "Revising, Rearranging",
+                "I know that this may never end",
+                "",
+                "And so I greet tomorrow",
+                "Already come so far and",
+                "Prepared to now evolve again",
+                "",
+                "Now that seems so long ago",
+                "And what's coming?",
+                "I don't know",
+                "",
+                "Just when",
+                "I feel like",
+                "I'm making",
+                "New friends",
+                "Everything changes",
+                "Could this be",
+                "The end?",
+                "Or are we evolving again?",
+                "We're evolving",
+                "We're evolving again!"
+            ].join('\n'),
+        };
+        // Aliases for alternate spellings
+        pokemonLyrics['heart pounding diary'] = pokemonLyrics['heart-pounding diary'];
+
+        const tvShowThemes = [
+            // Sitcoms
+            { shows: ['friends'],                                                              songKeys: ['theme',"i'll be there for you"],                       artist: 'The Rembrandts',                        title: "I'll Be There for You" },
+            { shows: ['seinfeld'],                                                             songKeys: ['theme','seinfeld theme'],                              artist: 'Jonathan Wolff',                        title: 'Seinfeld Theme' },
+            { shows: ['cheers'],                                                               songKeys: ['theme','where everybody knows your name'],             artist: 'Gary Portnoy',                          title: 'Where Everybody Knows Your Name' },
+            { shows: ['fresh prince','fresh prince of bel-air','bel air','bel-air'],          songKeys: ['theme','fresh prince theme'],                          artist: 'DJ Jazzy Jeff & The Fresh Prince',      title: 'The Fresh Prince of Bel-Air' },
+            { shows: ['big bang theory','tbbt'],                                               songKeys: ['theme','big bang theory theme'],                       artist: 'Barenaked Ladies',                      title: 'The Big Bang Theory' },
+            { shows: ['how i met your mother','himym'],                                        songKeys: ['theme','hey beautiful'],                               artist: 'The Solids',                            title: 'Hey Beautiful' },
+            { shows: ['the office','office'],                                                  songKeys: ['theme','the office theme'],                            artist: 'Jay Ferguson',                          title: 'The Office Theme' },
+            { shows: ['parks and recreation','parks and rec'],                                 songKeys: ['theme','parks and recreation theme'],                  artist: 'Gaby Moreno',                           title: 'Parks and Recreation Theme' },
+            { shows: ['family guy'],                                                           songKeys: ['theme','family guy theme'],                            artist: 'Seth MacFarlane',                       title: 'Family Guy Theme' },
+            { shows: ['the simpsons','simpsons'],                                              songKeys: ['theme','simpsons theme'],                              artist: 'Danny Elfman',                          title: 'The Simpsons Theme' },
+            { shows: ['south park'],                                                           songKeys: ['theme','going down to south park'],                    artist: 'Primus',                                title: 'South Park Theme' },
+            { shows: ['futurama'],                                                             songKeys: ['theme','futurama theme'],                              artist: 'Christopher Tyng',                      title: 'Futurama Theme' },
+            { shows: ['arrested development'],                                                 songKeys: ['theme','arrested development theme'],                  artist: 'David Schwartz',                        title: 'Arrested Development Theme' },
+            { shows: ['gilligan\'s island','gilligan'],                                        songKeys: ['theme','three hour tour'],                             artist: 'Sherwood Schwartz',                     title: "Gilligan's Island Theme" },
+            { shows: ['the flintstones','flintstones'],                                        songKeys: ['theme','meet the flintstones'],                        artist: 'Hoyt Curtin',                           title: 'Meet the Flintstones' },
+            { shows: ['the brady bunch','brady bunch'],                                        songKeys: ['theme','brady bunch theme'],                           artist: 'Barry Williams',                        title: 'The Brady Bunch Theme' },
+            { shows: ['full house'],                                                           songKeys: ['theme','everywhere you look'],                         artist: 'Jesse Frederick',                       title: 'Everywhere You Look' },
+            { shows: ['saved by the bell'],                                                    songKeys: ['theme','saved by the bell theme'],                     artist: 'Scott Gale',                            title: 'Saved by the Bell Theme' },
+            { shows: ['boy meets world'],                                                      songKeys: ['theme','boy meets world theme'],                       artist: 'Full Force',                            title: 'Boy Meets World Theme' },
+            { shows: ['that 70s show',"that '70s show"],                                      songKeys: ['theme','in the street'],                               artist: 'Cheap Trick',                           title: 'In the Street' },
+            { shows: ['malcolm in the middle','malcolm'],                                      songKeys: ['theme','you\'re not the boss of me'],                  artist: 'They Might Be Giants',                  title: "You're Not the Boss of Me Now" },
+            { shows: ['married with children'],                                                songKeys: ['theme','love and marriage'],                           artist: 'Frank Sinatra',                         title: 'Love and Marriage' },
+            { shows: ['home improvement'],                                                     songKeys: ['theme','home improvement theme'],                      artist: 'Dan Foliart',                           title: 'Home Improvement Theme' },
+            { shows: ['i love lucy'],                                                          songKeys: ['theme','i love lucy theme'],                           artist: 'Wilbur Hatch',                          title: 'I Love Lucy Theme' },
+            { shows: ['the munsters','munsters'],                                              songKeys: ['theme','munsters theme'],                              artist: 'Jack Marshall',                         title: 'The Munsters Theme' },
+            { shows: ['the addams family','addams family'],                                    songKeys: ['theme','addams family theme'],                         artist: 'Vic Mizzy',                             title: 'The Addams Family Theme' },
+            { shows: ['happy days'],                                                           songKeys: ['theme','happy days theme','rock around the clock'],    artist: 'Bill Haley',                            title: 'Rock Around the Clock' },
+            { shows: ['golden girls','the golden girls'],                                      songKeys: ['theme','thank you for being a friend'],                artist: 'Andrew Gold',                           title: 'Thank You for Being a Friend' },
+            { shows: ['mash','m*a*s*h'],                                                       songKeys: ['theme','suicide is painless','mash theme'],            artist: 'Johnny Mandel',                         title: 'Suicide Is Painless' },
+            { shows: ['two and a half men'],                                                   songKeys: ['theme','men men men'],                                 artist: 'Grant Geissman',                        title: 'Two and a Half Men Theme' },
+            { shows: ['it\'s always sunny in philadelphia','always sunny','iasip'],            songKeys: ['theme','always sunny theme'],                          artist: 'Heinz Kiessling',                       title: 'Temptation Sensation' },
+            { shows: ['seinfeld'],                                                             songKeys: ['theme'],                                               artist: 'Jonathan Wolff',                        title: 'Seinfeld Theme' },
+            { shows: ['brooklyn nine-nine','brooklyn 99'],                                     songKeys: ['theme','brooklyn nine nine theme'],                    artist: 'Dan Garber',                            title: 'Brooklyn Nine-Nine Theme' },
+            { shows: ['new girl'],                                                             songKeys: ['theme','new girl theme','hey girl'],                   artist: 'She & Him',                             title: "What I'm Meant to Do" },
+            { shows: ['schitt\'s creek','schitts creek'],                                      songKeys: ['theme','a little bit alexis','schitts creek theme'],  artist: 'Annie Murphy',                          title: 'A Little Bit Alexis' },
+            { shows: ['community'],                                                            songKeys: ['theme','at least it was here'],                        artist: 'The 88',                                title: 'At Least It Was Here' },
+            // Drama
+            { shows: ['game of thrones','got'],                                                songKeys: ['theme','game of thrones theme'],                       artist: 'Ramin Djawadi',                         title: 'Game of Thrones Theme' },
+            { shows: ['breaking bad'],                                                         songKeys: ['theme','breaking bad theme'],                          artist: 'Dave Porter',                           title: 'Breaking Bad Theme' },
+            { shows: ['the sopranos','sopranos'],                                              songKeys: ['theme','woke up this morning'],                        artist: 'Alabama 3',                             title: 'Woke Up This Morning' },
+            { shows: ['true blood'],                                                           songKeys: ['theme','bad things'],                                  artist: 'Jace Everett',                          title: 'Bad Things' },
+            { shows: ['mad men'],                                                              songKeys: ['theme','a beautiful mine'],                            artist: 'RJD2',                                  title: 'A Beautiful Mine' },
+            { shows: ['the wire','wire'],                                                      songKeys: ['theme','way down in the hole'],                        artist: 'Tom Waits',                             title: 'Way Down in the Hole' },
+            { shows: ['dexter'],                                                               songKeys: ['theme','dexter theme','blood theme'],                  artist: 'Rolfe Kent',                            title: 'Dexter Main Title' },
+            { shows: ['succession'],                                                           songKeys: ['theme','succession theme'],                            artist: 'Nicholas Britell',                      title: 'Succession Theme' },
+            { shows: ['stranger things'],                                                      songKeys: ['theme','stranger things theme'],                       artist: 'Kyle Dixon & Michael Stein',            title: 'Stranger Things Main Theme' },
+            { shows: ['westworld'],                                                            songKeys: ['theme','westworld theme'],                             artist: 'Ramin Djawadi',                         title: 'Westworld Theme' },
+            { shows: ['the mandalorian','mandalorian'],                                        songKeys: ['theme','mandalorian theme'],                           artist: 'Ludwig Goransson',                      title: 'The Mandalorian Theme' },
+            { shows: ['yellowstone'],                                                          songKeys: ['theme','yellowstone theme'],                           artist: 'Brian Tyler',                           title: 'Yellowstone Theme' },
+            { shows: ['lost'],                                                                 songKeys: ['theme','lost theme','main title'],                     artist: 'Michael Giacchino',                     title: 'Main Title - Lost' },
+            { shows: ['24'],                                                                   songKeys: ['theme','24 theme'],                                    artist: 'Sean Callery',                          title: '24 Theme' },
+            { shows: ['prison break'],                                                         songKeys: ['theme','prison break theme'],                          artist: 'Ramin Djawadi',                         title: 'Prison Break Theme' },
+            { shows: ['the walking dead','walking dead'],                                      songKeys: ['theme','walking dead theme'],                          artist: 'Bear McCreary',                         title: 'The Walking Dead Theme' },
+            { shows: ['house','house md','house m.d.'],                                        songKeys: ['theme','teardrop'],                                    artist: 'Massive Attack',                        title: 'Teardrop' },
+            { shows: ["grey's anatomy",'greys anatomy'],                                       songKeys: ['theme','cosy in the rocket'],                          artist: 'Psapp',                                 title: 'Cosy in the Rocket' },
+            { shows: ['euphoria'],                                                             songKeys: ['theme','all for us','euphoria theme'],                 artist: 'Labrinth',                              title: 'All For Us' },
+            { shows: ['ozark'],                                                                songKeys: ['theme','ozark theme'],                                 artist: 'Danny Bensi & Saunder Jurriaans',       title: 'Ozark Theme' },
+            { shows: ['peaky blinders'],                                                       songKeys: ['theme','red right hand','peaky blinders theme'],       artist: 'Nick Cave & The Bad Seeds',             title: 'Red Right Hand' },
+            { shows: ['the crown','crown'],                                                    songKeys: ['theme','the crown theme'],                             artist: 'Rupert Gregson-Williams',               title: 'The Crown Theme' },
+            { shows: ['vikings'],                                                              songKeys: ['theme','if i had a heart','vikings theme'],            artist: 'Fever Ray',                             title: 'If I Had a Heart' },
+            { shows: ['taboo'],                                                                songKeys: ['theme','taboo theme'],                                 artist: 'Max Richter',                           title: 'Taboo Theme' },
+            { shows: ['band of brothers'],                                                     songKeys: ['theme','band of brothers theme'],                      artist: 'Michael Kamen',                         title: 'Band of Brothers Theme' },
+            { shows: ['the boys'],                                                             songKeys: ['theme','the boys theme'],                              artist: 'Christopher Lennertz',                  title: 'The Boys Theme' },
+            { shows: ['squid game'],                                                           songKeys: ['theme','way back then','squid game theme'],            artist: 'Jung Jae-il',                           title: 'Way Back Then' },
+            { shows: ['ted lasso'],                                                            songKeys: ['theme','ted lasso theme'],                             artist: 'Tom Howe',                              title: 'Ted Lasso Theme' },
+            { shows: ['the last of us','last of us'],                                          songKeys: ['theme','the last of us theme','longing'],              artist: 'Gustavo Santaolalla',                   title: 'The Last of Us Theme' },
+            { shows: ['house of the dragon','hotd'],                                           songKeys: ['theme','house of the dragon theme'],                  artist: 'Ramin Djawadi',                         title: 'House of the Dragon Theme' },
+            { shows: ['the witcher','witcher'],                                                songKeys: ['theme','toss a coin','witcher theme'],                 artist: 'Jaskier',                               title: 'Toss a Coin to Your Witcher' },
+            { shows: ['narcos'],                                                               songKeys: ['theme','tuyo','narcos theme'],                         artist: 'Rodrigo Amarante',                      title: 'Tuyo' },
+            { shows: ['money heist','la casa de papel'],                                       songKeys: ['theme','my life is going on','bella ciao','money heist theme'], artist: 'Cecilia Krull',              title: 'My Life Is Going On' },
+            // Sci-fi
+            { shows: ['star trek','star trek original','tos'],                                 songKeys: ['theme','original series theme'],                       artist: 'Alexander Courage',                     title: 'Star Trek Theme' },
+            { shows: ['star trek the next generation','tng','next generation'],                songKeys: ['theme','tng theme'],                                   artist: 'Jerry Goldsmith',                       title: 'Star Trek The Next Generation Theme' },
+            { shows: ['star trek deep space nine','ds9'],                                      songKeys: ['theme','ds9 theme'],                                   artist: 'Dennis McCarthy',                       title: 'Star Trek Deep Space Nine Theme' },
+            { shows: ['star trek voyager'],                                                    songKeys: ['theme','voyager theme'],                               artist: 'Jerry Goldsmith',                       title: 'Star Trek Voyager Theme' },
+            { shows: ['doctor who'],                                                           songKeys: ['theme','doctor who theme'],                            artist: 'Ron Grainer',                           title: 'Doctor Who Theme' },
+            { shows: ['the x-files','x files','x-files'],                                     songKeys: ['theme','x-files theme'],                               artist: 'Mark Snow',                             title: 'The X-Files Theme' },
+            { shows: ['battlestar galactica'],                                                 songKeys: ['theme','battlestar theme','kara remembers'],           artist: 'Bear McCreary',                         title: 'Battlestar Galactica Theme' },
+            { shows: ['the twilight zone','twilight zone'],                                    songKeys: ['theme','twilight zone theme'],                         artist: 'Marius Constant',                       title: 'Twilight Zone Theme' },
+            { shows: ['firefly'],                                                              songKeys: ['theme','the ballad of serenity','firefly theme'],      artist: 'Sonny Rhodes',                          title: 'The Ballad of Serenity' },
+            { shows: ['black mirror'],                                                         songKeys: ['theme','black mirror theme'],                          artist: 'various',                               title: 'Black Mirror Theme' },
+            // Cartoons / Animation
+            { shows: ['spongebob squarepants','spongebob'],                                    songKeys: ['theme','are you ready kids','spongebob theme'],        artist: 'Patrick Pinney',                        title: 'SpongeBob SquarePants Theme' },
+            { shows: ['scooby-doo','scooby doo'],                                              songKeys: ['theme','scooby doo where are you'],                   artist: 'David Mook',                            title: 'Scooby-Doo, Where Are You!' },
+            { shows: ['rugrats'],                                                              songKeys: ['theme','rugrats theme'],                               artist: 'Mark Mothersbaugh',                     title: 'Rugrats Theme' },
+            { shows: ['hey arnold','hey arnold!'],                                             songKeys: ['theme','hey arnold theme'],                            artist: 'Jim Lang',                              title: 'Hey Arnold Theme' },
+            { shows: ["dexter's laboratory",'dexters lab'],                                    songKeys: ['theme'],                                               artist: 'Genndy Tartakovsky',                    title: "Dexter's Laboratory Theme" },
+            { shows: ['the powerpuff girls','powerpuff girls'],                                songKeys: ['theme','powerpuff girls theme'],                       artist: 'James L. Venable',                      title: 'The Powerpuff Girls Theme' },
+            { shows: ['the fairly oddparents','fairly oddparents'],                            songKeys: ['theme','fairly oddparents theme'],                     artist: 'Butch Hartman',                         title: 'The Fairly OddParents Theme' },
+            { shows: ['adventure time'],                                                       songKeys: ['theme','come along with me'],                          artist: 'Rebecca Sugar',                         title: 'Come Along With Me' },
+            { shows: ['steven universe'],                                                      songKeys: ['theme','we are the crystal gems'],                     artist: 'Rebecca Sugar',                         title: 'We Are the Crystal Gems' },
+            { shows: ['gravity falls'],                                                        songKeys: ['theme','gravity falls theme'],                         artist: 'Brad Breeck',                           title: 'Gravity Falls Theme' },
+            { shows: ['avatar the last airbender','atla','avatar'],                            songKeys: ['theme','avatar theme'],                               artist: 'Jeremy Zuckerman',                      title: 'Avatar Theme' },
+            { shows: ['the legend of korra','korra'],                                          songKeys: ['theme','korra theme'],                                 artist: 'Jeremy Zuckerman',                      title: 'The Legend of Korra Theme' },
+            { shows: ['teen titans'],                                                          songKeys: ['theme','teen titans theme'],                           artist: 'Puffy AmiYumi',                         title: 'Teen Titans Theme' },
+            { shows: ['kim possible'],                                                         songKeys: ['theme','call me beep me'],                             artist: 'Christina Milian',                      title: 'Call Me, Beep Me' },
+            { shows: ['ducktales','duck tales'],                                               songKeys: ['theme','ducktales theme'],                             artist: 'Jeff Pescetto',                         title: 'DuckTales Theme' },
+            { shows: ['chip and dale rescue rangers','rescue rangers'],                        songKeys: ['theme','rescue rangers theme'],                        artist: 'Mark Mueller',                          title: "Chip 'n Dale Rescue Rangers Theme" },
+            { shows: ['darkwing duck'],                                                        songKeys: ['theme','let\'s get dangerous'],                        artist: 'Jeff Pescetto',                         title: 'Darkwing Duck Theme' },
+            { shows: ['thundercats'],                                                          songKeys: ['theme','thundercats theme'],                           artist: 'Bernard Hoffer',                        title: 'ThunderCats Theme' },
+            { shows: ['he-man','he man','masters of the universe'],                            songKeys: ['theme','he-man theme'],                               artist: 'Shuki Levy',                            title: 'He-Man Theme' },
+            { shows: ['teenage mutant ninja turtles','tmnt'],                                  songKeys: ['theme','turtle power','tmnt theme'],                  artist: 'Partners in Kryme',                     title: 'Turtle Power' },
+            { shows: ['phineas and ferb'],                                                     songKeys: ['theme','today is gonna be a great day'],              artist: 'Bowling for Soup',                      title: 'Today Is Gonna Be a Great Day' },
+            { shows: ['regular show'],                                                         songKeys: ['theme','regular show theme'],                          artist: 'Mark Mothersbaugh',                     title: 'Regular Show Theme' },
+            { shows: ['over the garden wall'],                                                 songKeys: ['theme','into the unknown'],                            artist: 'The Blasting Company',                  title: 'Into the Unknown' },
+            { shows: ['the owl house','owl house'],                                            songKeys: ['theme','owl house theme'],                             artist: 'TJ Hill',                               title: 'The Owl House Theme' },
+            { shows: ['amphibia'],                                                             songKeys: ['theme','amphibia theme','no big deal'],               artist: 'Ben Callins',                           title: 'No Big Deal' },
+            { shows: ['bluey'],                                                                songKeys: ['theme','bluey theme'],                                 artist: 'Joff Bush',                             title: 'Bluey Theme' },
+            { shows: ['peppa pig'],                                                            songKeys: ['theme','peppa pig theme'],                             artist: 'various',                               title: 'Peppa Pig Theme' },
+            { shows: ['bob the builder'],                                                      songKeys: ['theme','can we fix it','bob the builder theme'],       artist: 'Bob the Builder',                       title: 'Can We Fix It?' },
+            { shows: ['dora the explorer','dora'],                                             songKeys: ['theme','dora the explorer theme'],                     artist: 'various',                               title: 'Dora the Explorer Theme' },
+            { shows: ['paw patrol'],                                                           songKeys: ['theme','paw patrol theme'],                            artist: 'various',                               title: 'PAW Patrol Theme' },
+            // Anime
+            { shows: ['naruto'],                                                               songKeys: ['rocks','theme','opening 1','season 1 theme'],          artist: 'Hound Dog',                             title: 'Rocks' },
+            { shows: ['naruto shippuden'],                                                     songKeys: ['hero','sign','theme','opening 1'],                     artist: 'Flow',                                  title: 'Hero\'s Come Back!!' },
+            { shows: ['dragon ball z','dbz'],                                                  songKeys: ['theme','rock the dragon','cha la head'],               artist: 'Ron Wasserman',                         title: 'Rock the Dragon' },
+            { shows: ['dragon ball','original dragon ball'],                                   songKeys: ['theme','makafushigi adventure'],                       artist: 'Hiroki Takahashi',                      title: 'Makafushigi Adventure' },
+            { shows: ['dragon ball super'],                                                    songKeys: ['theme','chozetsu dynamic'],                            artist: 'Kazuya Yoshii',                         title: 'Chozetsu Dynamic' },
+            { shows: ['one piece'],                                                            songKeys: ['theme','we are','one piece theme'],                    artist: 'Hiroshi Kitadani',                      title: 'We Are!' },
+            { shows: ['attack on titan','aot','shingeki no kyojin'],                          songKeys: ['theme','guren no yumiya'],                             artist: 'Linked Horizon',                        title: 'Guren no Yumiya' },
+            { shows: ['death note'],                                                           songKeys: ['theme','the world'],                                   artist: 'Nightmare',                             title: 'The World' },
+            { shows: ['fullmetal alchemist','fma','fullmetal alchemist brotherhood','fmab'],   songKeys: ['theme','again','ready steady go'],                     artist: 'YUI',                                   title: 'Again' },
+            { shows: ['sword art online','sao'],                                               songKeys: ['theme','crossing field'],                              artist: 'LiSA',                                  title: 'crossing field' },
+            { shows: ['my hero academia','mha','boku no hero academia','bnha'],               songKeys: ['theme','the day'],                                     artist: 'Porno Graffitti',                       title: 'The Day' },
+            { shows: ['demon slayer','kimetsu no yaiba'],                                      songKeys: ['theme','gurenge'],                                     artist: 'LiSA',                                  title: 'Gurenge' },
+            { shows: ['jujutsu kaisen'],                                                       songKeys: ['theme','kaikai kitan'],                                artist: 'Eve',                                   title: 'Kaikai Kitan' },
+            { shows: ['hunter x hunter','hxh'],                                               songKeys: ['theme','departure'],                                   artist: 'Galneryus',                             title: 'Departure!' },
+            { shows: ['bleach'],                                                               songKeys: ['theme','asterisk'],                                    artist: 'Orange Range',                          title: 'Asterisk' },
+            { shows: ['inuyasha'],                                                             songKeys: ['theme','change the world'],                            artist: 'V6',                                    title: 'Change the World' },
+            { shows: ['cowboy bebop'],                                                         songKeys: ['theme','tank'],                                        artist: 'Seatbelts',                             title: 'Tank!' },
+            { shows: ['sailor moon'],                                                          songKeys: ['theme','moonlight densetsu'],                          artist: 'DALI',                                  title: 'Moonlight Densetsu' },
+            { shows: ['neon genesis evangelion','evangelion','ngev'],                          songKeys: ['theme','cruel angel\'s thesis','zankoku na tenshi'],    artist: 'Yoko Takahashi',                        title: "A Cruel Angel's Thesis" },
+            { shows: ['spy x family','spy family'],                                            songKeys: ['theme','mixed nuts'],                                  artist: 'Official HIGE DANdism',                 title: 'Mixed Nuts' },
+            { shows: ['chainsaw man'],                                                         songKeys: ['theme','kick back'],                                   artist: 'Kenshi Yonezu',                         title: 'KICK BACK' },
+            { shows: ['vinland saga'],                                                         songKeys: ['theme','mukanjyo'],                                    artist: 'Survive Said The Prophet',              title: 'Mukanjyo' },
+        ];
+
+        function normalizeStr(s) {
+            return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function resolveTVTheme(showName, songTitle) {
+            const showLower = showName.toLowerCase();
+            const songLower = songTitle.toLowerCase();
+
+            // Check Pokemon first
+            const isPokemon = showLower.includes('pokemon') || showLower.includes('pokémon');
+            if (isPokemon) {
+                let bestTheme        = null;
+                let bestShowLen      = -1;
+                let bestHasHardcoded = false;
+
+                for (const theme of pokemonThemes) {
+                    // Find the longest matching show keyword (most specific wins)
+                    const matchedShow = theme.shows.reduce((best, s) => {
+                        return showLower.includes(s) && s.length > best.length ? s : best;
+                    }, '');
+                    const songMatch = theme.songKeys.some(k => songLower.includes(k));
+
+                    if (matchedShow.length > 0 || songMatch) {
+                        const titleKey      = normalizeStr(theme.title);
+                        const hasHardcoded  = !!(pokemonLyrics[theme.season] || pokemonLyrics[titleKey]);
+                        const isBetter =
+                            matchedShow.length > bestShowLen ||
+                            (matchedShow.length === bestShowLen && hasHardcoded && !bestHasHardcoded);
+                        if (isBetter) {
+                            bestShowLen      = matchedShow.length;
+                            bestTheme        = theme;
+                            bestHasHardcoded = hasHardcoded;
+                        }
+                    }
+                }
+
+                if (bestTheme) {
+                    const titleKey  = normalizeStr(bestTheme.title);
+                    const hardcoded = pokemonLyrics[bestTheme.season] || pokemonLyrics[titleKey] || null;
+                    return { artist: bestTheme.artist, title: bestTheme.title, hardcodedLyrics: hardcoded, meta: bestTheme.meta || null };
+                }
+                return { artist: pokemonThemes[0].artist, title: pokemonThemes[0].title, hardcodedLyrics: null };
+            }
+
+            // Check general TV shows
+            for (const theme of tvShowThemes) {
+                const showMatch = theme.shows.some(s => showLower.includes(s));
+                const songMatch = theme.songKeys.some(k => songLower.includes(k));
+                if (showMatch && (songMatch || songLower.includes('theme'))) return { artist: theme.artist, title: theme.title };
+            }
+
+            return null;
+        }
+
+        async function translateToEnglish(text) {
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`;
+                const res  = await fetch(url, { signal: AbortSignal.timeout(5000) });
+                const data = await res.json();
+                // data[0] is array of [translatedChunk, originalChunk]
+                const translated = data[0].map(chunk => chunk[0]).join('');
+                // data[2] is detected source language — if already 'en', return original
+                const detectedLang = data[2];
+                if (detectedLang === 'en') return text;
+                return translated;
+            } catch (_) {
+                return text; // fallback: return original if translation fails
+            }
+        }
+
+        async function fetchMeta(artist, title) {
+            try {
+                const query = encodeURIComponent(`${artist} ${title}`);
+                const res  = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`, { signal: AbortSignal.timeout(5000) });
+                const data = await res.json();
+                if (data.results && data.results.length > 0) {
+                    const r = data.results[0];
+                    const date = r.releaseDate
+                        ? new Date(r.releaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                        : null;
+                    return { artist: r.artistName, date };
+                }
+            } catch (_) {}
+            return null;
+        }
+
+        function setMode(selected) {
+            const nurseryBox  = document.getElementById('nursery-mode');
+            const movieBox    = document.getElementById('movie-mode');
+            const artistInput = document.getElementById('input-artist');
+
+            // Uncheck the other one
+            if (selected === 'nursery' && nurseryBox.checked) movieBox.checked = false;
+            if (selected === 'movie'   && movieBox.checked)   nurseryBox.checked = false;
+
+            const isNursery = nurseryBox.checked;
+            const isMovie   = movieBox.checked;
+
+            artistInput.disabled = isNursery;
+            artistInput.placeholder = isMovie ? 'Movie / TV show name' : 'Artist name';
+            if (isNursery) artistInput.value = '';
+        }
+
+        async function searchLyrics() {
+            const isNursery = document.getElementById('nursery-mode').checked;
+            const isMovie   = document.getElementById('movie-mode').checked;
+            const artistRaw = document.getElementById('input-artist').value.trim();
+            const artist    = isNursery ? 'Traditional' : artistRaw;
+            const song   = document.getElementById('input-song').value.trim();
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+
+            if (!isNursery && !artistRaw) {
+                status.textContent = isMovie ? 'Please enter both a movie name and a song title.' : 'Please enter both an artist and a song title.';
+                status.className = 'error';
+                status.style.display = 'block';
+                result.style.display = 'none';
+                return;
+            }
+
+            if (!song) {
+                status.textContent = 'Please enter a song title.';
+                status.className = 'error';
+                status.style.display = 'block';
+                result.style.display = 'none';
+                return;
+            }
+
+            status.textContent = 'Searching...';
+            status.className = '';
+            status.style.display = 'block';
+            result.style.display = 'none';
+
+            // Check built-in nursery rhyme list first
+            if (isNursery) {
+                const key = song.toLowerCase().trim();
+                const found = nurseryRhymes[key];
+                if (found) {
+                    document.getElementById('song-title').textContent = song;
+                    document.getElementById('song-artist').textContent = 'Nursery Rhyme';
+                    document.getElementById('lyrics-box').textContent = found;
+                    document.getElementById('song-meta').style.display = 'none';
+                    status.style.display = 'none';
+                    result.style.display = 'block';
+                    return;
+                }
+            }
+
+            try {
+                let searchArtist = artist;
+                let searchSong   = song;
+
+                // Resolve known TV/movie theme to proper artist/title before searching
+                if (isMovie) {
+                    // Direct hardcoded lookup by song title for Pokemon shows (bypasses show-name ambiguity)
+                    const normalShow = normalizeStr(artistRaw);
+                    const isPokemonShow = normalShow.includes('pokemon') ||
+                        pokemonThemes.some(t => t.shows.some(s => normalShow.includes(s)));
+                    if (isPokemonShow) {
+                        const directKey    = normalizeStr(song);
+                        const directKeyAlt = directKey.replace(/-/g, ' ');
+                        if (pokemonLyrics[directKey] || pokemonLyrics[directKeyAlt]) {
+                            const matchTheme   = pokemonThemes.find(t => t.songKeys.some(k => directKey.includes(k) || directKeyAlt.includes(k)));
+                            const displayTitle = matchTheme ? matchTheme.title : song;
+                            document.getElementById('song-title').textContent = displayTitle;
+                            document.getElementById('song-artist').textContent = `From: ${artistRaw}`;
+                            document.getElementById('lyrics-box').textContent = pokemonLyrics[directKey] || pokemonLyrics[directKeyAlt];
+                            if (matchTheme && matchTheme.meta) {
+                                document.getElementById('meta-artist').innerHTML = `<strong>Artist:</strong> ${matchTheme.meta.artist}`;
+                                document.getElementById('meta-date').innerHTML = `<strong>Released:</strong> ${matchTheme.meta.date}`;
+                                document.getElementById('song-meta').style.display = 'flex';
+                            } else {
+                                document.getElementById('song-meta').style.display = 'none';
+                            }
+                            status.style.display = 'none';
+                            result.style.display = 'block';
+                            return;
+                        }
+                    }
+                    const resolved = resolveTVTheme(artistRaw, song);
+                    if (resolved) {
+                        if (resolved.hardcodedLyrics) {
+                            document.getElementById('song-title').textContent = resolved.title;
+                            document.getElementById('song-artist').textContent = `From: ${artistRaw}`;
+                            document.getElementById('lyrics-box').textContent = resolved.hardcodedLyrics;
+                            if (resolved.meta) {
+                                document.getElementById('meta-artist').innerHTML = `<strong>Artist:</strong> ${resolved.meta.artist}`;
+                                document.getElementById('meta-date').innerHTML = `<strong>Released:</strong> ${resolved.meta.date}`;
+                                document.getElementById('song-meta').style.display = 'flex';
+                            } else {
+                                document.getElementById('song-meta').style.display = 'none';
+                            }
+                            status.style.display = 'none';
+                            result.style.display = 'block';
+                            return;
+                        }
+                        searchArtist = resolved.artist;
+                        searchSong   = resolved.title;
+                    }
+                }
+
+                // Try original title first
+                let found = await fetchLyrics(searchArtist, searchSong);
+
+                // If not found and title has numbers, retry with words
+                if (!found && /\d/.test(searchSong)) {
+                    const convertedSong = convertNumbersInTitle(searchSong);
+                    found = await fetchLyrics(searchArtist, convertedSong);
+                }
+
+                if (found) {
+                    status.textContent = 'Translating...';
+                    found.lyrics = await translateToEnglish(found.lyrics);
+
+                    document.getElementById('song-title').textContent = found.title;
+                    document.getElementById('song-artist').textContent = isNursery ? 'Nursery Rhyme' : isMovie ? `From: ${artistRaw}` : found.artist;
+                    document.getElementById('lyrics-box').textContent = found.lyrics;
+                    document.getElementById('song-meta').style.display = 'none';
+                    status.style.display = 'none';
+                    result.style.display = 'block';
+
+                    if (!isNursery) {
+                        const metaQuery = isMovie ? `${artistRaw} ${found.title} soundtrack` : found.artist;
+                        fetchMeta(isMovie ? artistRaw : found.artist, found.title).then(meta => {
+                            if (meta) {
+                                const metaEl = document.getElementById('song-meta');
+                                document.getElementById('meta-artist').innerHTML = isMovie
+                                    ? `<strong>Movie / TV Show:</strong> ${artistRaw}`
+                                    : `<strong>Artist:</strong> ${meta.artist}`;
+                                document.getElementById('meta-date').innerHTML = meta.date ? `<strong>Released:</strong> ${meta.date}` : '';
+                                metaEl.style.display = 'flex';
+                            }
+                        });
+                    }
+                } else {
+                    status.textContent = 'Lyrics not found. Try a different artist or song name.';
+                    status.className = 'error';
+                    result.style.display = 'none';
+                }
+            } catch (err) {
+                status.textContent = 'Something went wrong. Check your connection and try again.';
+                status.className = 'error';
+                result.style.display = 'none';
+            }
+        }
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js');
+        }
+    </script>
+
+</body>
+</html>

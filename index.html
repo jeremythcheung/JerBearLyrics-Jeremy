@@ -235,9 +235,96 @@
             border: 6px solid transparent;
             border-top-color: #3a3a5a;
         }
+        #login-overlay {
+            position: fixed;
+            inset: 0;
+            background: #0f0f0f;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        #login-box {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 16px;
+            padding: 40px 36px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+        }
+
+        #login-box h2 {
+            color: #1db954;
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+
+        #login-box p {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 28px;
+        }
+
+        #login-box input {
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 14px;
+            background: #2a2a2a;
+            border: 2px solid #2a2a2a;
+            border-radius: 30px;
+            color: #f0f0f0;
+            font-size: 1rem;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        #login-box input:focus {
+            border-color: #1db954;
+        }
+
+        #login-box button {
+            width: 100%;
+            padding: 12px;
+            background: #1db954;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #login-box button:hover {
+            background: #17a348;
+        }
+
+        #login-error {
+            color: #ff6b6b;
+            font-size: 0.88rem;
+            margin-top: 12px;
+            min-height: 20px;
+        }
+
+        #main-content { display: none; }
     </style>
 </head>
 <body>
+
+    <div id="login-overlay">
+        <div id="login-box">
+            <h2>JerbearLyrics</h2>
+            <p>Sign in to continue</p>
+            <input type="text" id="login-username" placeholder="Username" autocomplete="username" />
+            <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" />
+            <button onclick="doLogin()">Sign In</button>
+            <div id="login-error"></div>
+        </div>
+    </div>
+
+    <div id="main-content">
 
     <header>
         <h1>JerbearLyrics</h1>
@@ -1415,7 +1502,31 @@
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js');
         }
+
+        const USERS = { "jeremy": "jerbear" };
+
+        function doLogin() {
+            const user = document.getElementById('login-username').value.trim();
+            const pass = document.getElementById('login-password').value;
+            if (USERS[user] && USERS[user] === pass) {
+                sessionStorage.setItem('jbl-auth', '1');
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+            } else {
+                document.getElementById('login-error').textContent = 'Incorrect username or password.';
+            }
+        }
+
+        document.getElementById('login-password').addEventListener('keydown', e => {
+            if (e.key === 'Enter') doLogin();
+        });
+
+        if (sessionStorage.getItem('jbl-auth') === '1') {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+        }
     </script>
 
+    </div><!-- end main-content -->
 </body>
 </html>

@@ -1952,8 +1952,10 @@
             // Check built-in nursery rhyme list first
             if (isNursery) {
                 const key = song.toLowerCase().trim();
-                const found = nurseryRhymes[key];
+                let found = nurseryRhymes[key];
                 if (found) {
+                    const selectedLang = canTranslate() ? (document.getElementById('translate-lang').value || '') : '';
+                    if (selectedLang) { status.textContent = 'Translating...'; found = await translateLyrics(found, selectedLang); }
                     incrementSearchCount();
                     document.getElementById('song-title').textContent = song;
                     document.getElementById('song-artist').textContent = 'Nursery Rhyme';
@@ -1981,9 +1983,12 @@
                         if (pokemonLyrics[directKey] || pokemonLyrics[directKeyAlt]) {
                             const matchTheme   = pokemonThemes.find(t => t.songKeys.some(k => directKey.includes(k) || directKeyAlt.includes(k)));
                             const displayTitle = matchTheme ? matchTheme.title : song;
+                            let lyr = pokemonLyrics[directKey] || pokemonLyrics[directKeyAlt];
+                            const selectedLang = canTranslate() ? (document.getElementById('translate-lang').value || '') : '';
+                            if (selectedLang) { status.textContent = 'Translating...'; lyr = await translateLyrics(lyr, selectedLang); }
                             document.getElementById('song-title').textContent = displayTitle;
                             document.getElementById('song-artist').textContent = `From: ${artistRaw}`;
-                            document.getElementById('lyrics-box').textContent = pokemonLyrics[directKey] || pokemonLyrics[directKeyAlt];
+                            document.getElementById('lyrics-box').textContent = lyr;
                             if (matchTheme && matchTheme.meta) {
                                 document.getElementById('meta-artist').innerHTML = `<strong>Artist:</strong> ${matchTheme.meta.artist}`;
                                 document.getElementById('meta-date').innerHTML = `<strong>Released:</strong> ${matchTheme.meta.date}`;
@@ -2000,9 +2005,12 @@
                     const resolved = resolveTVTheme(artistRaw, song);
                     if (resolved) {
                         if (resolved.hardcodedLyrics) {
+                            let lyr = resolved.hardcodedLyrics;
+                            const selectedLang = canTranslate() ? (document.getElementById('translate-lang').value || '') : '';
+                            if (selectedLang) { status.textContent = 'Translating...'; lyr = await translateLyrics(lyr, selectedLang); }
                             document.getElementById('song-title').textContent = resolved.title;
                             document.getElementById('song-artist').textContent = `From: ${artistRaw}`;
-                            document.getElementById('lyrics-box').textContent = resolved.hardcodedLyrics;
+                            document.getElementById('lyrics-box').textContent = lyr;
                             if (resolved.meta) {
                                 document.getElementById('meta-artist').innerHTML = `<strong>Artist:</strong> ${resolved.meta.artist}`;
                                 document.getElementById('meta-date').innerHTML = `<strong>Released:</strong> ${resolved.meta.date}`;

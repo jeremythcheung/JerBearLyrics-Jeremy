@@ -2056,8 +2056,23 @@
                 });
                 const data = await res.json();
                 if (data.tier && data.tier !== 'free') {
+                    const previousTier = localStorage.getItem('jbl-premium') || 'free';
                     localStorage.setItem('jbl-premium', data.tier);
                     initPremiumStatus();
+
+                    // Only push notification if this is a newly activated package
+                    if (previousTier === 'free') {
+                        const tierName = data.tier === 'full'
+                            ? 'Searches + Translations'
+                            : 'Searches';
+                        const tierDetails = data.tier === 'full'
+                            ? 'You now have unlimited searches and translations!'
+                            : 'You now have unlimited searches!';
+                        pushNotification(
+                            `✅ ${tierName} plan is now active!`,
+                            tierDetails
+                        );
+                    }
                 }
             } catch (e) {}
         }

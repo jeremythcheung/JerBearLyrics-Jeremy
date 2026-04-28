@@ -2077,6 +2077,20 @@
             } catch (e) {}
         }
 
+        // Re-check premium whenever the user returns to the tab (e.g. after Stripe checkout)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && sessionStorage.getItem('jbl-auth') === '1') {
+                checkPremiumFromServer();
+            }
+        });
+
+        // Also poll every 10 seconds while tab is open and user is not yet premium
+        setInterval(() => {
+            if (sessionStorage.getItem('jbl-auth') === '1' && getPremiumTier() === 'free') {
+                checkPremiumFromServer();
+            }
+        }, 10000);
+
         function doLogin() {
             const user = document.getElementById('login-username').value.trim();
             const pass = document.getElementById('login-password').value;

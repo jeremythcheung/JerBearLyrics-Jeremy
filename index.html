@@ -658,6 +658,27 @@
                 <label for="movie-mode">Movie / TV show song</label>
             </div>
         </div>
+        <div id="translate-options" style="display:none; justify-content:center; align-items:center; gap:8px; margin-top:10px;">
+            <label for="translate-lang" style="color:#ccc; font-size:0.9rem;">Translate to:</label>
+            <select id="translate-lang" style="background:#222; color:#fff; border:1px solid #444; border-radius:6px; padding:4px 8px; font-size:0.9rem;">
+                <option value="">— No translation —</option>
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="it">Italian</option>
+                <option value="pt">Portuguese</option>
+                <option value="ru">Russian</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
+                <option value="zh">Chinese (Simplified)</option>
+                <option value="ar">Arabic</option>
+                <option value="hi">Hindi</option>
+                <option value="nl">Dutch</option>
+                <option value="pl">Polish</option>
+                <option value="tr">Turkish</option>
+            </select>
+        </div>
         <div class="info-wrapper">
             <div class="info-btn">i
                 <div class="tooltip">
@@ -1685,46 +1706,46 @@
 
         const DEEPL_API_KEY = 'YOUR_DEEPL_API_KEY';
 
-        async function translateWithGoogleUnofficial(text) {
-            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`;
+        async function translateWithGoogleUnofficial(text, targetLang) {
+            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
             const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
             const data = await res.json();
-            if (data[2] === 'en') return { text, alreadyEnglish: true };
+            if (data[2] === targetLang) return { text, alreadySame: true };
             return { text: data[0].map(c => c[0]).join('') };
         }
 
-        async function translateWithDeepL(text) {
+        async function translateWithDeepL(text, targetLang) {
             if (!DEEPL_API_KEY || DEEPL_API_KEY === 'YOUR_DEEPL_API_KEY') throw new Error('No DeepL key');
             const res = await fetch('https://api-free.deepl.com/v2/translate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `auth_key=${DEEPL_API_KEY}&text=${encodeURIComponent(text)}&target_lang=EN`,
+                body: `auth_key=${DEEPL_API_KEY}&text=${encodeURIComponent(text)}&target_lang=${targetLang.toUpperCase()}`,
                 signal: AbortSignal.timeout(6000)
             });
             const data = await res.json();
             if (!res.ok) throw new Error('DeepL error');
             const detected = data.translations[0].detected_source_language;
-            if (detected === 'EN') return { text, alreadyEnglish: true };
+            if (detected === targetLang.toUpperCase()) return { text, alreadySame: true };
             return { text: data.translations[0].text };
         }
 
-        async function translateWithMyMemory(text) {
+        async function translateWithMyMemory(text, targetLang) {
             // MyMemory works best on shorter chunks — split by verse if long
             const chunks = text.length > 400
                 ? text.match(/([\s\S]{1,400})(?:\n|$)/g) || [text]
                 : [text];
             const results = [];
             for (const chunk of chunks) {
-                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=autodetect|en`, { signal: AbortSignal.timeout(6000) });
+                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=autodetect|${targetLang}`, { signal: AbortSignal.timeout(6000) });
                 const data = await res.json();
                 if (data.responseStatus !== 200) throw new Error('MyMemory error');
-                if (data.responseData.detectedLanguage === 'en') return { text, alreadyEnglish: true };
+                if (data.responseData.detectedLanguage === targetLang) return { text, alreadySame: true };
                 results.push(data.responseData.translatedText);
             }
             return { text: results.join('\n') };
         }
 
-        async function translateWithLingva(text) {
+        async function translateWithLingva(text, targetLang) {
             const instances = [
                 'https://lingva.ml',
                 'https://translate.plausibility.cloud',
@@ -1732,7 +1753,7 @@
             ];
             for (const base of instances) {
                 try {
-                    const res = await fetch(`${base}/api/v1/auto/en/${encodeURIComponent(text)}`, { signal: AbortSignal.timeout(6000) });
+                    const res = await fetch(`${base}/api/v1/auto/${targetLang}/${encodeURIComponent(text)}`, { signal: AbortSignal.timeout(6000) });
                     if (!res.ok) continue;
                     const data = await res.json();
                     if (data.translation) return { text: data.translation };
@@ -1741,7 +1762,7 @@
             throw new Error('All Lingva instances failed');
         }
 
-        async function translateWithLibreTranslate(text) {
+        async function translateWithLibreTranslate(text, targetLang) {
             const instances = [
                 'https://libretranslate.com',
                 'https://translate.argosopentech.com',
@@ -1752,7 +1773,7 @@
                     const res = await fetch(`${base}/translate`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ q: text, source: 'auto', target: 'en', format: 'text' }),
+                        body: JSON.stringify({ q: text, source: 'auto', target: targetLang, format: 'text' }),
                         signal: AbortSignal.timeout(6000)
                     });
                     if (!res.ok) continue;
@@ -1763,19 +1784,19 @@
             throw new Error('All LibreTranslate instances failed');
         }
 
-        async function translateToEnglish(text) {
+        async function translateLyrics(text, targetLang) {
             const sources = [
-                { name: 'DeepL',            fn: () => translateWithDeepL(text) },
-                { name: 'MyMemory',         fn: () => translateWithMyMemory(text) },
-                { name: 'Lingva',           fn: () => translateWithLingva(text) },
-                { name: 'LibreTranslate',   fn: () => translateWithLibreTranslate(text) },
-                { name: 'Google',           fn: () => translateWithGoogleUnofficial(text) },
+                { name: 'DeepL',            fn: () => translateWithDeepL(text, targetLang) },
+                { name: 'MyMemory',         fn: () => translateWithMyMemory(text, targetLang) },
+                { name: 'Lingva',           fn: () => translateWithLingva(text, targetLang) },
+                { name: 'LibreTranslate',   fn: () => translateWithLibreTranslate(text, targetLang) },
+                { name: 'Google',           fn: () => translateWithGoogleUnofficial(text, targetLang) },
             ];
 
             for (const source of sources) {
                 try {
                     const result = await source.fn();
-                    if (result.alreadyEnglish) return text;
+                    if (result.alreadySame) return text;
                     if (result.text && result.text.trim()) return result.text;
                 } catch (_) {}
             }
@@ -1845,6 +1866,8 @@
                     : '⭐ Premium — unlimited searches!';
                 document.getElementById('premium-banner').textContent = msg;
                 document.getElementById('premium-banner').style.display = 'block';
+
+                if (tier === 'full') document.getElementById('translate-options').style.display = 'flex';
 
                 document.querySelector('#pricing-section h2').textContent = 'Your Plan';
                 document.querySelector('#pricing-section > p').textContent = 'Manage or upgrade your current plan.';
@@ -2007,9 +2030,10 @@
                 }
 
                 if (found) {
-                    if (canTranslate()) {
+                    const selectedLang = canTranslate() ? (document.getElementById('translate-lang').value || '') : '';
+                    if (selectedLang) {
                         status.textContent = 'Translating...';
-                        found.lyrics = await translateToEnglish(found.lyrics);
+                        found.lyrics = await translateLyrics(found.lyrics, selectedLang);
                     }
 
                     incrementSearchCount();

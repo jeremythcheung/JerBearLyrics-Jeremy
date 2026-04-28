@@ -310,6 +310,149 @@
         }
 
         #main-content { display: none; }
+
+        .pricing-section {
+            max-width: 700px;
+            margin: 50px auto 40px;
+            padding: 0 20px;
+            text-align: center;
+        }
+
+        .pricing-section h2 {
+            font-size: 1.6rem;
+            color: #f0f0f0;
+            margin-bottom: 8px;
+        }
+
+        .pricing-section p {
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+
+        .pricing-cards {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .pricing-card {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 16px;
+            padding: 30px 24px;
+            width: 280px;
+            text-align: left;
+            position: relative;
+        }
+
+        .pricing-card.featured {
+            border-color: #1db954;
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1db954;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 14px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+        }
+
+        .pricing-card h3 {
+            font-size: 1.1rem;
+            color: #f0f0f0;
+            margin-bottom: 8px;
+        }
+
+        .pricing-price {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1db954;
+            margin-bottom: 4px;
+        }
+
+        .pricing-price span {
+            font-size: 0.9rem;
+            color: #888;
+            font-weight: 400;
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin: 18px 0 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .pricing-features li {
+            color: #ccc;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pricing-features li::before {
+            content: '✓';
+            color: #1db954;
+            font-weight: 700;
+        }
+
+        .pricing-features li.no::before {
+            content: '✗';
+            color: #555;
+        }
+
+        .pricing-features li.no {
+            color: #555;
+        }
+
+        .pricing-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 30px;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .pricing-btn.free {
+            background: #2a2a2a;
+            color: #888;
+            cursor: default;
+        }
+
+        .pricing-btn.premium {
+            background: #1db954;
+            color: #fff;
+        }
+
+        .pricing-btn.premium:hover {
+            background: #17a348;
+        }
+
+        .premium-banner {
+            background: linear-gradient(135deg, #1a2e1a, #1a1a1a);
+            border: 1px solid #1db954;
+            border-radius: 12px;
+            padding: 12px 20px;
+            text-align: center;
+            color: #1db954;
+            font-weight: 600;
+            font-size: 0.95rem;
+            max-width: 700px;
+            margin: 20px auto 0;
+        }
     </style>
 </head>
 <body>
@@ -374,6 +517,8 @@
         </div>
     </header>
 
+    <div id="premium-banner" class="premium-banner" style="display:none;">⭐ You're on Premium — unlimited searches & translations!</div>
+
     <div class="lyrics-section">
         <div id="status">Enter an artist and song title to find lyrics.</div>
         <div id="result" style="display:none;">
@@ -383,6 +528,34 @@
             <div id="song-meta" style="display:none;">
                 <span id="meta-artist"></span>
                 <span id="meta-date"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="pricing-section" id="pricing-section">
+        <h2>Upgrade Your Plan</h2>
+        <p>Unlock unlimited searches and translations with Premium.</p>
+        <div class="pricing-cards">
+            <div class="pricing-card">
+                <h3>Free</h3>
+                <div class="pricing-price">$0 <span>/ forever</span></div>
+                <ul class="pricing-features">
+                    <li>3 searches per day</li>
+                    <li class="no">Unlimited searches</li>
+                    <li class="no">Unlimited translations</li>
+                </ul>
+                <button class="pricing-btn free" disabled>Current Plan</button>
+            </div>
+            <div class="pricing-card featured">
+                <div class="pricing-badge">BEST VALUE</div>
+                <h3>Premium</h3>
+                <div class="pricing-price">$2.99 <span>/ month</span></div>
+                <ul class="pricing-features">
+                    <li>Unlimited searches</li>
+                    <li>Unlimited translations</li>
+                    <li>Support the app ❤️</li>
+                </ul>
+                <button class="pricing-btn premium" onclick="goToPremiumCheckout()">Upgrade Now</button>
             </div>
         </div>
     </div>
@@ -1374,6 +1547,29 @@
             if (isNursery) artistInput.value = '';
         }
 
+        const STRIPE_PAYMENT_LINK = 'YOUR_STRIPE_PAYMENT_LINK';
+
+        function isPremium() {
+            return localStorage.getItem('jbl-premium') === '1';
+        }
+
+        function goToPremiumCheckout() {
+            const successUrl = encodeURIComponent(window.location.href.split('?')[0] + '?premium=1');
+            window.location.href = STRIPE_PAYMENT_LINK + '?success_url=' + successUrl;
+        }
+
+        function initPremiumStatus() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('premium') === '1') {
+                localStorage.setItem('jbl-premium', '1');
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+            if (isPremium()) {
+                document.getElementById('premium-banner').style.display = 'block';
+                document.getElementById('pricing-section').style.display = 'none';
+            }
+        }
+
         const FREE_LIMIT = 3;
 
         function getSearchCount() {
@@ -1398,13 +1594,15 @@
             const status = document.getElementById('status');
             const result = document.getElementById('result');
 
-            const used = getSearchCount();
-            if (used >= FREE_LIMIT) {
-                status.textContent = `You've used all ${FREE_LIMIT} free searches for today. Come back tomorrow!`;
-                status.className = 'error';
-                status.style.display = 'block';
-                result.style.display = 'none';
-                return;
+            if (!isPremium()) {
+                const used = getSearchCount();
+                if (used >= FREE_LIMIT) {
+                    status.textContent = `You've used all ${FREE_LIMIT} free searches for today. Upgrade to Premium for unlimited searches!`;
+                    status.className = 'error';
+                    status.style.display = 'block';
+                    result.style.display = 'none';
+                    return;
+                }
             }
 
             if (!isNursery && !artistRaw) {
@@ -1607,6 +1805,8 @@
         if (sessionStorage.getItem('jbl-auth') === '1') {
             unlockApp();
         }
+
+        initPremiumStatus();
 
         const GOOGLE_CLIENT_ID = '66194243975-m86c5ac4gfobutr5uv26k731f8kffr8t.apps.googleusercontent.com';
 

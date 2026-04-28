@@ -729,7 +729,7 @@
                     <li class="no">Translations</li>
                     <li>Support the app ❤️</li>
                 </ul>
-                <button class="pricing-btn premium" onclick="goToPremiumCheckout('searches')">Upgrade Now</button>
+                <button id="btn-searches" class="pricing-btn premium" onclick="goToPremiumCheckout('searches')">Upgrade Now</button>
             </div>
             <div class="pricing-card featured">
                 <div class="pricing-badge">BEST VALUE</div>
@@ -740,7 +740,7 @@
                     <li>Unlimited translations</li>
                     <li>Support the app ❤️</li>
                 </ul>
-                <button class="pricing-btn premium" onclick="goToPremiumCheckout('full')">Upgrade Now</button>
+                <button id="btn-full" class="pricing-btn premium" onclick="goToPremiumCheckout('full')">Upgrade Now</button>
             </div>
         </div>
     </div>
@@ -1845,7 +1845,28 @@
                     : '⭐ Premium — unlimited searches!';
                 document.getElementById('premium-banner').textContent = msg;
                 document.getElementById('premium-banner').style.display = 'block';
-                document.getElementById('pricing-section').style.display = 'none';
+
+                document.querySelector('#pricing-section h2').textContent = 'Your Plan';
+                document.querySelector('#pricing-section > p').textContent = 'Manage or upgrade your current plan.';
+
+                const searchesBtn = document.getElementById('btn-searches');
+                const fullBtn = document.getElementById('btn-full');
+                const freeBtn = document.querySelector('.pricing-btn.free');
+
+                if (tier === 'searches') {
+                    searchesBtn.textContent = 'Current Plan';
+                    searchesBtn.disabled = true;
+                    searchesBtn.classList.remove('premium');
+                    searchesBtn.classList.add('free');
+                } else if (tier === 'full') {
+                    searchesBtn.classList.remove('premium');
+                    searchesBtn.classList.add('free');
+                    searchesBtn.onclick = null;
+                    fullBtn.textContent = 'Current Plan';
+                    fullBtn.disabled = true;
+                    fullBtn.classList.remove('premium');
+                    fullBtn.classList.add('free');
+                }
             }
         }
 
@@ -2139,6 +2160,16 @@
         if (sessionStorage.getItem('jbl-auth') === '1') {
             unlockApp(sessionStorage.getItem('jbl-email'));
         }
+
+        // Handle Stripe success redirect (e.g. ?jbl_tier=full)
+        (function handleStripeReturn() {
+            const params = new URLSearchParams(window.location.search);
+            const tier = params.get('jbl_tier');
+            if (tier === 'full' || tier === 'searches') {
+                localStorage.setItem('jbl-premium', tier);
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+        })();
 
         initPremiumStatus();
 

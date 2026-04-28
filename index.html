@@ -1374,6 +1374,21 @@
             if (isNursery) artistInput.value = '';
         }
 
+        const FREE_LIMIT = 3;
+
+        function getSearchCount() {
+            const today = new Date().toDateString();
+            const data = JSON.parse(localStorage.getItem('jbl-searches') || '{}');
+            if (data.date !== today) return 0;
+            return data.count || 0;
+        }
+
+        function incrementSearchCount() {
+            const today = new Date().toDateString();
+            const count = getSearchCount() + 1;
+            localStorage.setItem('jbl-searches', JSON.stringify({ date: today, count }));
+        }
+
         async function searchLyrics() {
             const isNursery = document.getElementById('nursery-mode').checked;
             const isMovie   = document.getElementById('movie-mode').checked;
@@ -1382,6 +1397,15 @@
             const song   = document.getElementById('input-song').value.trim();
             const status = document.getElementById('status');
             const result = document.getElementById('result');
+
+            const used = getSearchCount();
+            if (used >= FREE_LIMIT) {
+                status.textContent = `You've used all ${FREE_LIMIT} free searches for today. Come back tomorrow!`;
+                status.className = 'error';
+                status.style.display = 'block';
+                result.style.display = 'none';
+                return;
+            }
 
             if (!isNursery && !artistRaw) {
                 status.textContent = isMovie ? 'Please enter both a movie name and a song title.' : 'Please enter both an artist and a song title.';
@@ -1409,6 +1433,7 @@
                 const key = song.toLowerCase().trim();
                 const found = nurseryRhymes[key];
                 if (found) {
+                    incrementSearchCount();
                     document.getElementById('song-title').textContent = song;
                     document.getElementById('song-artist').textContent = 'Nursery Rhyme';
                     document.getElementById('lyrics-box').textContent = found;
@@ -1445,6 +1470,7 @@
                             } else {
                                 document.getElementById('song-meta').style.display = 'none';
                             }
+                            incrementSearchCount();
                             status.style.display = 'none';
                             result.style.display = 'block';
                             return;
@@ -1463,6 +1489,7 @@
                             } else {
                                 document.getElementById('song-meta').style.display = 'none';
                             }
+                            incrementSearchCount();
                             status.style.display = 'none';
                             result.style.display = 'block';
                             return;
@@ -1485,6 +1512,7 @@
                     status.textContent = 'Translating...';
                     found.lyrics = await translateToEnglish(found.lyrics);
 
+                    incrementSearchCount();
                     document.getElementById('song-title').textContent = found.title;
                     document.getElementById('song-artist').textContent = isNursery ? 'Nursery Rhyme' : isMovie ? `From: ${artistRaw}` : found.artist;
                     document.getElementById('lyrics-box').textContent = found.lyrics;

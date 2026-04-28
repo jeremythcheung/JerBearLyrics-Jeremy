@@ -1673,8 +1673,9 @@
                     const songMatch = theme.songKeys.some(k => songLower.includes(k));
 
                     if (matchedShow.length > 0 || songMatch) {
-                        const titleKey      = normalizeStr(theme.title);
-                        const hasHardcoded  = !!(pokemonLyrics[theme.season] || pokemonLyrics[titleKey]);
+                        const titleKey        = normalizeStr(theme.title);
+                        const titleKeyStripped = titleKey.replace(/ \(english version\)/g, '').replace(/ \(english ver\.\)/g, '');
+                        const hasHardcoded  = !!(pokemonLyrics[titleKey] || pokemonLyrics[titleKeyStripped]);
                         const isBetter =
                             matchedShow.length > bestShowLen ||
                             (matchedShow.length === bestShowLen && hasHardcoded && !bestHasHardcoded);
@@ -1687,8 +1688,9 @@
                 }
 
                 if (bestTheme) {
-                    const titleKey  = normalizeStr(bestTheme.title);
-                    const hardcoded = pokemonLyrics[bestTheme.season] || pokemonLyrics[titleKey] || null;
+                    const titleKey        = normalizeStr(bestTheme.title);
+                    const titleKeyStripped = titleKey.replace(/ \(english version\)/g, '').replace(/ \(english ver\.\)/g, '');
+                    const hardcoded = pokemonLyrics[titleKey] || pokemonLyrics[titleKeyStripped] || null;
                     return { artist: bestTheme.artist, title: bestTheme.title, hardcodedLyrics: hardcoded, meta: bestTheme.meta || null };
                 }
                 return { artist: pokemonThemes[0].artist, title: pokemonThemes[0].title, hardcodedLyrics: null };

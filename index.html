@@ -938,21 +938,12 @@
         }
 
         async function fetchLyrics(artist, title) {
-            // Source 1: lyrics.ovh (suggest + fetch)
+            // Source 1: lyrics.ovh (direct fetch — no suggest override to avoid wrong matches)
             try {
-                const query = `${artist} ${title}`;
-                const suggestRes  = await fetch(`https://api.lyrics.ovh/suggest/${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(5000) });
-                const suggestData = await suggestRes.json();
-                let resolvedArtist = artist;
-                let resolvedTitle  = title;
-                if (suggestData.data && suggestData.data.length > 0) {
-                    resolvedArtist = suggestData.data[0].artist.name;
-                    resolvedTitle  = suggestData.data[0].title;
-                }
-                const lyricsRes  = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(resolvedArtist)}/${encodeURIComponent(resolvedTitle)}`, { signal: AbortSignal.timeout(5000) });
+                const lyricsRes  = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`, { signal: AbortSignal.timeout(5000) });
                 const lyricsData = await lyricsRes.json();
                 if (lyricsData.lyrics) {
-                    return { lyrics: lyricsData.lyrics.trim(), artist: resolvedArtist, title: resolvedTitle };
+                    return { lyrics: lyricsData.lyrics.trim(), artist, title };
                 }
             } catch (_) {}
 

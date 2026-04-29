@@ -1097,7 +1097,7 @@
 
             // ── Japanese originals ────────────────────────────────────────
             // JP OP1: ドキメキダイアリー — asmi feat. Chinozo (HZ001–HZ025)
-            { season: 26, shows: ['liko and roy','pocket monsters horizons'],                               songKeys: ['dokimeki diary','dokimeki','liko opening jp','hz1 jp'],                                    artist: 'asmi feat. Chinozo', title: 'ドキメキダイアリー' },
+            { season: 26, shows: ['liko and roy','pocket monsters horizons','horizons'],                   songKeys: ['dokimeki diary','dokimeki','liko opening jp','hz1 jp'],                                    artist: 'asmi feat. Chinozo', title: 'ドキメキダイアリー' },
             // JP OP2: HALO — Snow Man (HZ026–HZ045)
             { season: 26, shows: ['sparkling of terapagos','terapagos'],                                   songKeys: ['halo snow man','snow man halo','terapagos opening jp','hz2 jp'],                           artist: 'Snow Man',        title: 'HALO (Snow Man)' },
             // JP OP3: Will — IVE (HZ046–HZ067)
@@ -2415,6 +2415,7 @@
                 let bestTheme        = null;
                 let bestShowLen      = -1;
                 let bestHasHardcoded = false;
+                let bestSongMatch    = false;
 
                 for (const theme of pokemonThemes) {
                     // Find the longest matching show keyword (most specific wins)
@@ -2427,13 +2428,16 @@
                         const titleKey        = normalizeStr(theme.title);
                         const titleKeyStripped = titleKey.replace(/ \(english version\)/g, '').replace(/ \(english ver\.\)/g, '');
                         const hasHardcoded  = !!(pokemonLyrics[titleKey] || pokemonLyrics[titleKeyStripped]);
+                        // Song key match always beats a show-only match; within same category, longer show match wins
                         const isBetter =
-                            matchedShow.length > bestShowLen ||
-                            (matchedShow.length === bestShowLen && hasHardcoded && !bestHasHardcoded);
+                            (songMatch && !bestSongMatch) ||
+                            (songMatch === bestSongMatch && matchedShow.length > bestShowLen) ||
+                            (songMatch === bestSongMatch && matchedShow.length === bestShowLen && hasHardcoded && !bestHasHardcoded);
                         if (isBetter) {
                             bestShowLen      = matchedShow.length;
                             bestTheme        = theme;
                             bestHasHardcoded = hasHardcoded;
+                            bestSongMatch    = songMatch;
                         }
                     }
                 }

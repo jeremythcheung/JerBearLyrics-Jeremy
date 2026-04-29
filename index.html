@@ -705,6 +705,21 @@
                 <input type="checkbox" id="movie-mode" onchange="setMode('movie')" />
                 <label for="movie-mode">Movie / TV show song</label>
             </div>
+            <div class="nursery-toggle">
+                <input type="checkbox" id="bible-mode" onchange="setMode('bible')" />
+                <label for="bible-mode">Bible verse</label>
+            </div>
+        </div>
+        <div id="bible-options" style="display:none; justify-content:center; align-items:center; gap:8px; margin-top:10px;">
+            <label for="bible-translation" style="color:#ccc; font-size:0.9rem;">Translation:</label>
+            <select id="bible-translation" style="background:#222; color:#fff; border:1px solid #444; border-radius:6px; padding:4px 8px; font-size:0.9rem;">
+                <option value="kjv">KJV — King James Version</option>
+                <option value="web">WEB — World English Bible</option>
+                <option value="bbe">BBE — Bible in Basic English</option>
+                <option value="asv">ASV — American Standard Version</option>
+                <option value="darby">Darby</option>
+                <option value="ylt">YLT — Young's Literal Translation</option>
+            </select>
         </div>
         <div id="translate-options" style="display:none; justify-content:center; align-items:center; gap:8px; margin-top:10px;">
             <label for="translate-lang" style="color:#ccc; font-size:0.9rem;">Translate to:</label>
@@ -2132,18 +2147,37 @@
         function setMode(selected) {
             const nurseryBox  = document.getElementById('nursery-mode');
             const movieBox    = document.getElementById('movie-mode');
+            const bibleBox    = document.getElementById('bible-mode');
             const artistInput = document.getElementById('input-artist');
+            const songInput   = document.getElementById('input-song');
 
-            // Uncheck the other one
-            if (selected === 'nursery' && nurseryBox.checked) movieBox.checked = false;
-            if (selected === 'movie'   && movieBox.checked)   nurseryBox.checked = false;
+            // Mutually exclusive
+            if (selected === 'nursery' && nurseryBox.checked) { movieBox.checked = false; bibleBox.checked = false; }
+            if (selected === 'movie'   && movieBox.checked)   { nurseryBox.checked = false; bibleBox.checked = false; }
+            if (selected === 'bible'   && bibleBox.checked)   { nurseryBox.checked = false; movieBox.checked = false; }
 
             const isNursery = nurseryBox.checked;
             const isMovie   = movieBox.checked;
+            const isBible   = bibleBox.checked;
 
             artistInput.disabled = isNursery;
-            artistInput.placeholder = isMovie ? 'Movie / TV show name' : 'Artist name';
-            if (isNursery) artistInput.value = '';
+
+            if (isBible) {
+                artistInput.placeholder = 'Book (e.g. John, Genesis)';
+                artistInput.disabled = false;
+                songInput.placeholder  = 'Chapter:Verse (e.g. 3:16 or 3:1-20)';
+            } else if (isMovie) {
+                artistInput.placeholder = 'Movie / TV show name';
+                songInput.placeholder   = 'Song title';
+            } else if (isNursery) {
+                artistInput.value = '';
+                songInput.placeholder = 'Song title';
+            } else {
+                artistInput.placeholder = 'Artist name';
+                songInput.placeholder   = 'Song title';
+            }
+
+            document.getElementById('bible-options').style.display = isBible ? 'flex' : 'none';
         }
 
         const STRIPE_LINK_SEARCHES = 'https://buy.stripe.com/test_4gM28s4XK7UA7ikc7d1wY05';
@@ -2321,15 +2355,61 @@
         ttsPopulateVoices();
         // ────────────────────────────────────────────────────────────────
 
+        async function fetchBibleVerse(book, ref) {
+            const translation = document.getElementById('bible-translation').value;
+            const query = encodeURIComponent(`${book} ${ref}`);
+            const res = await fetch(`https://bible-api.com/${query}?translation=${translation}`, { signal: AbortSignal.timeout(8000) });
+            if (!res.ok) throw new Error('Verse not found');
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            // Format: each verse on its own line with verse number
+            const lines = data.verses.map(v => `[${v.verse}] ${v.text.trim()}`);
+            return { reference: data.reference, translation: data.translation_name, text: lines.join('\n') };
+        }
+
         async function searchLyrics() {
             ttsStop();
             const isNursery = document.getElementById('nursery-mode').checked;
             const isMovie   = document.getElementById('movie-mode').checked;
+            const isBible   = document.getElementById('bible-mode').checked;
             const artistRaw = document.getElementById('input-artist').value.trim();
             const artist    = isNursery ? 'Traditional' : artistRaw;
             const song   = document.getElementById('input-song').value.trim();
             const status = document.getElementById('status');
             const result = document.getElementById('result');
+
+            // ── Bible mode ───────────────────────────────────────────────
+            if (isBible) {
+                if (!artistRaw || !song) {
+                    status.textContent = 'Please enter a book name and a chapter:verse reference.';
+                    status.className = 'error';
+                    status.style.display = 'block';
+                    result.style.display = 'none';
+                    return;
+                }
+                status.textContent = 'Looking up verse...';
+                status.className = '';
+                status.style.display = 'block';
+                result.style.display = 'none';
+                try {
+                    let { reference, translation, text } = await fetchBibleVerse(artistRaw, song);
+                    const selectedLang = canTranslate() ? (document.getElementById('translate-lang').value || '') : '';
+                    if (selectedLang) { status.textContent = 'Translating...'; text = await translateLyrics(text, selectedLang); }
+                    document.getElementById('song-title').textContent = reference;
+                    document.getElementById('song-artist').textContent = translation;
+                    document.getElementById('lyrics-box').textContent = text;
+                    document.getElementById('song-meta').style.display = 'none';
+                    incrementSearchCount();
+                    status.style.display = 'none';
+                    result.style.display = 'block';
+                } catch (e) {
+                    status.textContent = 'Verse not found. Try e.g. "John" / "3:16" or "Genesis" / "1:1-10".';
+                    status.className = 'error';
+                    status.style.display = 'block';
+                }
+                return;
+            }
+            // ─────────────────────────────────────────────────────────────
 
             if (!isPremium()) {
                 const used = getSearchCount();

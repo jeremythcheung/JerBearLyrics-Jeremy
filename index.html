@@ -655,6 +655,23 @@
             max-width: 700px;
             margin: 20px auto 0;
         }
+    #admin-panel {
+            margin: 16px auto;
+            max-width: 700px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 16px;
+        }
+        #admin-panel h3 { color: #1db954; margin: 0 0 12px 0; }
+        #admin-panel button { background: #1db954; color: #000; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; margin-bottom: 12px; font-weight: bold; }
+        #admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        #admin-table th, #admin-table td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #333; }
+        #admin-table th { color: #aaa; }
+        #admin-table td { color: #eee; }
+        .tier-free { color: #888; }
+        .tier-searches { color: #1db954; }
+        .tier-full { color: #f59e0b; }
     </style>
 </head>
 <body>
@@ -776,6 +793,15 @@
     </div>
 
     <div id="premium-banner" class="premium-banner" style="display:none;">⭐ You're on Premium — unlimited searches & translations!</div>
+
+    <div id="admin-panel" style="display:none;">
+        <h3>👑 Admin — User Tracker</h3>
+        <button onclick="loadAdminUsers()">Refresh</button>
+        <table id="admin-table">
+            <thead><tr><th>Email</th><th>Tier</th><th>Activated</th></tr></thead>
+            <tbody id="admin-tbody"><tr><td colspan="3">Loading...</td></tr></tbody>
+        </table>
+    </div>
 
     <div class="lyrics-section">
         <div id="status">Enter an artist and song title to find lyrics.</div>
@@ -2995,12 +3021,43 @@
             localStorage.setItem('jbl-users', JSON.stringify(users));
         }
 
-        function unlockApp(email) {
+        function unlockApp(email, username) {
             sessionStorage.setItem('jbl-auth', '1');
             if (email) sessionStorage.setItem('jbl-email', email.toLowerCase());
+            if (username) sessionStorage.setItem('jbl-username', username);
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
             checkPremiumFromServer();
+            if (sessionStorage.getItem('jbl-username') === 'jeremy') {
+                document.getElementById('admin-panel').style.display = 'block';
+                loadAdminUsers();
+            }
+        }
+
+        async function loadAdminUsers() {
+            const tbody = document.getElementById('admin-tbody');
+            tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+            try {
+                const res = await fetch('/.netlify/functions/admin-users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret: 'jerbear-admin-2026' })
+                });
+                const users = await res.json();
+                if (!Array.isArray(users) || !users.length) {
+                    tbody.innerHTML = '<tr><td colspan="3">No premium users yet.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = users.map(u => `
+                    <tr>
+                        <td>${u.email}</td>
+                        <td class="tier-${u.tier}">${u.tier}</td>
+                        <td>${u.activatedAt ? new Date(u.activatedAt).toLocaleDateString() : '—'}</td>
+                    </tr>
+                `).join('');
+            } catch {
+                tbody.innerHTML = '<tr><td colspan="3">Error loading users.</td></tr>';
+            }
         }
 
         async function checkPremiumFromServer() {
@@ -3063,14 +3120,14 @@
                 if (users[user]) { err.textContent = 'Username already taken.'; return; }
                 users[user] = { pass, email };
                 saveUsers(users);
-                unlockApp(email);
+                unlockApp(email, user);
             } else {
                 const users = getUsers();
                 const record = users[user];
                 const storedPass = typeof record === 'object' ? record.pass : record;
                 const storedEmail = typeof record === 'object' ? record.email : null;
                 if (record && storedPass === pass) {
-                    unlockApp(storedEmail);
+                    unlockApp(storedEmail, user);
                 } else {
                     err.textContent = 'Incorrect username or password.';
                 }

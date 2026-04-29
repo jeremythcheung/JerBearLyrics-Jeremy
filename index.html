@@ -122,6 +122,54 @@
             border: 1px solid #2a2a2a;
         }
 
+        #tts-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        #tts-play {
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: none;
+            background: #1db954;
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #tts-play:hover { background: #17a348; }
+        #tts-stop {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: none;
+            background: #555;
+            color: #fff;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #tts-stop:hover { background: #444; }
+        #tts-voice {
+            background: #1a1a1a;
+            color: #e0e0e0;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 0.85rem;
+            max-width: 220px;
+        }
+        #tts-rate-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+        #tts-rate { accent-color: #1db954; width: 80px; }
+
         #song-meta {
             display: flex;
             gap: 24px;
@@ -720,6 +768,16 @@
             <div id="song-title"></div>
             <div id="song-artist"></div>
             <div id="lyrics-box"></div>
+            <div id="tts-bar">
+                <button id="tts-play" onclick="ttsToggle()">&#9654; Read Aloud</button>
+                <button id="tts-stop" onclick="ttsStop()" style="display:none;">&#9646;&#9646; Stop</button>
+                <select id="tts-voice" title="Voice"></select>
+                <div id="tts-rate-wrap">
+                    <span>Speed:</span>
+                    <input type="range" id="tts-rate" min="0.5" max="2" step="0.1" value="0.9">
+                    <span id="tts-rate-label">0.9x</span>
+                </div>
+            </div>
             <div id="song-meta" style="display:none;">
                 <span id="meta-artist"></span>
                 <span id="meta-date"></span>
@@ -2160,7 +2218,91 @@
             localStorage.setItem('jbl-searches', JSON.stringify({ date: today, count }));
         }
 
+        // ── Text-to-Speech ──────────────────────────────────────────────
+        let ttsSpeaking = false;
+
+        function ttsPopulateVoices() {
+            const select = document.getElementById('tts-voice');
+            if (!select) return;
+            const voices = speechSynthesis.getVoices();
+            if (!voices.length) return;
+            const prev = select.value;
+            select.innerHTML = '';
+            // English first, then others
+            const eng = voices.filter(v => v.lang.startsWith('en'));
+            const rest = voices.filter(v => !v.lang.startsWith('en'));
+            [...eng, ...rest].forEach((v, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                const isAI = /neural|natural|premium|wavenet|journey|aria|guy|jenny|sonia|ryan|libby/i.test(v.name);
+                opt.textContent = (isAI ? '✦ ' : '') + v.name + ' (' + v.lang + ')';
+                select.appendChild(opt);
+            });
+            // Restore or default to first AI/English voice
+            const aiIdx = [...eng, ...rest].findIndex(v =>
+                /neural|natural|premium|wavenet|journey|aria|guy|jenny|sonia|ryan|libby/i.test(v.name)
+            );
+            select.value = prev || (aiIdx >= 0 ? aiIdx : 0);
+        }
+
+        function ttsGetVoice() {
+            const select = document.getElementById('tts-voice');
+            const voices = speechSynthesis.getVoices();
+            const eng = voices.filter(v => v.lang.startsWith('en'));
+            const all = [...eng, ...voices.filter(v => !v.lang.startsWith('en'))];
+            return all[parseInt(select.value)] || voices[0];
+        }
+
+        function ttsToggle() {
+            const btn = document.getElementById('tts-play');
+            if (speechSynthesis.speaking && !speechSynthesis.paused) {
+                speechSynthesis.pause();
+                ttsSpeaking = false;
+                btn.textContent = '▶ Resume';
+                return;
+            }
+            if (speechSynthesis.paused) {
+                speechSynthesis.resume();
+                ttsSpeaking = true;
+                btn.textContent = '⏸ Pause';
+                return;
+            }
+            // Start new utterance
+            const text = document.getElementById('lyrics-box').textContent;
+            if (!text.trim()) return;
+            const rate = parseFloat(document.getElementById('tts-rate').value);
+            const utt = new SpeechSynthesisUtterance(text);
+            utt.voice = ttsGetVoice();
+            utt.rate = rate;
+            utt.onend = utt.onerror = ttsStop;
+            speechSynthesis.cancel();
+            speechSynthesis.speak(utt);
+            ttsSpeaking = true;
+            btn.innerHTML = '&#9646;&#9646; Pause';
+            document.getElementById('tts-stop').style.display = 'inline-block';
+        }
+
+        function ttsStop() {
+            speechSynthesis.cancel();
+            ttsSpeaking = false;
+            const btn = document.getElementById('tts-play');
+            if (btn) btn.innerHTML = '&#9654; Read Aloud';
+            const stop = document.getElementById('tts-stop');
+            if (stop) stop.style.display = 'none';
+        }
+
+        // Rate label update
+        document.getElementById('tts-rate').addEventListener('input', function() {
+            document.getElementById('tts-rate-label').textContent = parseFloat(this.value).toFixed(1) + 'x';
+        });
+
+        // Load voices (Chrome fires onvoiceschanged; others populate synchronously)
+        speechSynthesis.onvoiceschanged = ttsPopulateVoices;
+        ttsPopulateVoices();
+        // ────────────────────────────────────────────────────────────────
+
         async function searchLyrics() {
+            ttsStop();
             const isNursery = document.getElementById('nursery-mode').checked;
             const isMovie   = document.getElementById('movie-mode').checked;
             const artistRaw = document.getElementById('input-artist').value.trim();

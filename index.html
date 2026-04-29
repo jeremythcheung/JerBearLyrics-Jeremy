@@ -2219,77 +2219,97 @@
         }
 
         // ── Text-to-Speech ──────────────────────────────────────────────
-        let ttsSpeaking = false;
+        // Map translate-lang codes → BCP-47 prefix used by Web Speech API
+        const TTS_LANG_MAP = {
+            '':   'en', 'en': 'en', 'es': 'es', 'fr': 'fr', 'de': 'de',
+            'it': 'it', 'pt': 'pt', 'ru': 'ru', 'ja': 'ja', 'ko': 'ko',
+            'zh': 'zh', 'ar': 'ar', 'hi': 'hi', 'nl': 'nl', 'pl': 'pl',
+            'tr': 'tr'
+        };
 
-        function ttsPopulateVoices() {
+        function ttsActiveLang() {
+            const sel = document.getElementById('translate-lang');
+            const code = sel ? sel.value : '';
+            return TTS_LANG_MAP[code] || 'en';
+        }
+
+        function ttsIsAI(name) {
+            return /neural|natural|premium|wavenet|journey|aria|guy|jenny|sonia|ryan|libby|zira|hazel|susan/i.test(name);
+        }
+
+        function ttsPopulateVoices(preferLang) {
             const select = document.getElementById('tts-voice');
             if (!select) return;
             const voices = speechSynthesis.getVoices();
             if (!voices.length) return;
-            const prev = select.value;
+            const lang = preferLang || ttsActiveLang();
             select.innerHTML = '';
-            // English first, then others
-            const eng = voices.filter(v => v.lang.startsWith('en'));
-            const rest = voices.filter(v => !v.lang.startsWith('en'));
-            [...eng, ...rest].forEach((v, i) => {
+            // Target-language voices first (AI ones prioritised), then English, then rest
+            const target = voices.filter(v => v.lang.startsWith(lang));
+            const eng    = voices.filter(v => v.lang.startsWith('en') && !v.lang.startsWith(lang));
+            const rest   = voices.filter(v => !v.lang.startsWith(lang) && !v.lang.startsWith('en'));
+            const ordered = [...target, ...eng, ...rest];
+            ordered.forEach((v, i) => {
                 const opt = document.createElement('option');
                 opt.value = i;
-                const isAI = /neural|natural|premium|wavenet|journey|aria|guy|jenny|sonia|ryan|libby/i.test(v.name);
-                opt.textContent = (isAI ? '✦ ' : '') + v.name + ' (' + v.lang + ')';
+                opt.textContent = (ttsIsAI(v.name) ? '✦ ' : '') + v.name + ' (' + v.lang + ')';
                 select.appendChild(opt);
             });
-            // Restore or default to first AI/English voice
-            const aiIdx = [...eng, ...rest].findIndex(v =>
-                /neural|natural|premium|wavenet|journey|aria|guy|jenny|sonia|ryan|libby/i.test(v.name)
-            );
-            select.value = prev || (aiIdx >= 0 ? aiIdx : 0);
+            // Default: first AI voice in the target language, else first target, else 0
+            const bestAI  = target.findIndex(v => ttsIsAI(v.name));
+            select.value  = bestAI >= 0 ? bestAI : 0;
         }
 
         function ttsGetVoice() {
-            const select = document.getElementById('tts-voice');
-            const voices = speechSynthesis.getVoices();
-            const eng = voices.filter(v => v.lang.startsWith('en'));
-            const all = [...eng, ...voices.filter(v => !v.lang.startsWith('en'))];
-            return all[parseInt(select.value)] || voices[0];
+            const select  = document.getElementById('tts-voice');
+            const voices  = speechSynthesis.getVoices();
+            const lang    = ttsActiveLang();
+            const target  = voices.filter(v => v.lang.startsWith(lang));
+            const eng     = voices.filter(v => v.lang.startsWith('en') && !v.lang.startsWith(lang));
+            const rest    = voices.filter(v => !v.lang.startsWith(lang) && !v.lang.startsWith('en'));
+            const ordered = [...target, ...eng, ...rest];
+            return ordered[parseInt(select.value)] || voices[0];
         }
 
         function ttsToggle() {
             const btn = document.getElementById('tts-play');
             if (speechSynthesis.speaking && !speechSynthesis.paused) {
                 speechSynthesis.pause();
-                ttsSpeaking = false;
-                btn.textContent = '▶ Resume';
+                btn.innerHTML = '&#9654; Resume';
                 return;
             }
             if (speechSynthesis.paused) {
                 speechSynthesis.resume();
-                ttsSpeaking = true;
-                btn.textContent = '⏸ Pause';
+                btn.innerHTML = '&#9646;&#9646; Pause';
                 return;
             }
-            // Start new utterance
             const text = document.getElementById('lyrics-box').textContent;
             if (!text.trim()) return;
             const rate = parseFloat(document.getElementById('tts-rate').value);
-            const utt = new SpeechSynthesisUtterance(text);
-            utt.voice = ttsGetVoice();
-            utt.rate = rate;
-            utt.onend = utt.onerror = ttsStop;
+            const utt  = new SpeechSynthesisUtterance(text);
+            utt.voice  = ttsGetVoice();
+            utt.lang   = utt.voice ? utt.voice.lang : ttsActiveLang();
+            utt.rate   = rate;
+            utt.onend  = utt.onerror = ttsStop;
             speechSynthesis.cancel();
             speechSynthesis.speak(utt);
-            ttsSpeaking = true;
             btn.innerHTML = '&#9646;&#9646; Pause';
             document.getElementById('tts-stop').style.display = 'inline-block';
         }
 
         function ttsStop() {
             speechSynthesis.cancel();
-            ttsSpeaking = false;
             const btn = document.getElementById('tts-play');
             if (btn) btn.innerHTML = '&#9654; Read Aloud';
             const stop = document.getElementById('tts-stop');
             if (stop) stop.style.display = 'none';
         }
+
+        // Re-populate voices when translation language changes
+        document.getElementById('translate-lang').addEventListener('change', function() {
+            ttsStop();
+            ttsPopulateVoices(TTS_LANG_MAP[this.value] || 'en');
+        });
 
         // Rate label update
         document.getElementById('tts-rate').addEventListener('input', function() {
@@ -2297,7 +2317,7 @@
         });
 
         // Load voices (Chrome fires onvoiceschanged; others populate synchronously)
-        speechSynthesis.onvoiceschanged = ttsPopulateVoices;
+        speechSynthesis.onvoiceschanged = () => ttsPopulateVoices();
         ttsPopulateVoices();
         // ────────────────────────────────────────────────────────────────
 

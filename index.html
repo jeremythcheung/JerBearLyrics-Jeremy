@@ -760,8 +760,7 @@
             <button class="mood-btn" onclick="moodSearch('romantic')">💕 Romantic</button>
         </div>
         <div id="spotify-bar">
-            <button id="spotify-btn" onclick="spotifyConnect()">🎵 Connect Spotify</button>
-            <span id="spotify-status"></span>
+            <button id="spotify-btn" onclick="whatAmIListeningTo()">🎵 What are you listening to?</button>
         </div>
         <div style="display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin-top:14px;">
             <div class="nursery-toggle">
@@ -3503,112 +3502,18 @@
             searchLyrics();
         }
 
-        // ── Spotify Currently Playing ─────────────────────────────────────────
-        const SPOTIFY_CLIENT_ID = '';
-        const SPOTIFY_REDIRECT_URI = window.location.origin + '/';
-        const SPOTIFY_SCOPES = 'user-read-currently-playing user-read-playback-state';
-
-        function spotifyConnect() {
-            if (!SPOTIFY_CLIENT_ID) {
-                alert('Spotify is not set up yet. Ask the developer to add a Spotify Client ID.');
-                return;
-            }
-            if (localStorage.getItem('spotify-token')) {
-                spotifyGetCurrentlyPlaying();
-                return;
-            }
-            const verifier = generateVerifier(128);
-            localStorage.setItem('spotify-verifier', verifier);
-            generateChallenge(verifier).then(challenge => {
-                const params = new URLSearchParams({
-                    client_id: SPOTIFY_CLIENT_ID,
-                    response_type: 'code',
-                    redirect_uri: SPOTIFY_REDIRECT_URI,
-                    code_challenge_method: 'S256',
-                    code_challenge: challenge,
-                    scope: SPOTIFY_SCOPES,
-                    state: 'jbl-spotify'
-                });
-                window.location.href = 'https://accounts.spotify.com/authorize?' + params;
-            });
+        // ── What are you listening to? ────────────────────────────────────────
+        function whatAmIListeningTo() {
+            const artistInput = document.getElementById('input-artist');
+            artistInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            artistInput.focus();
+            artistInput.style.borderColor = '#1db954';
+            document.getElementById('input-song').style.borderColor = '#1db954';
+            setTimeout(() => {
+                artistInput.style.borderColor = '';
+                document.getElementById('input-song').style.borderColor = '';
+            }, 2000);
         }
-
-        function generateVerifier(length) {
-            const arr = new Uint8Array(length);
-            crypto.getRandomValues(arr);
-            return btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-        }
-
-        async function generateChallenge(verifier) {
-            const data = new TextEncoder().encode(verifier);
-            const digest = await crypto.subtle.digest('SHA-256', data);
-            return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-        }
-
-        async function spotifyHandleCallback() {
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('state') !== 'jbl-spotify' || !params.get('code') || !SPOTIFY_CLIENT_ID) return;
-            const code = params.get('code');
-            const verifier = localStorage.getItem('spotify-verifier');
-            window.history.replaceState({}, '', '/');
-            try {
-                const res = await fetch('https://accounts.spotify.com/api/token', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        client_id: SPOTIFY_CLIENT_ID,
-                        grant_type: 'authorization_code',
-                        code,
-                        redirect_uri: SPOTIFY_REDIRECT_URI,
-                        code_verifier: verifier
-                    })
-                });
-                const data = await res.json();
-                if (data.access_token) {
-                    localStorage.setItem('spotify-token', data.access_token);
-                    document.getElementById('spotify-btn').textContent = '🎵 What\'s Playing?';
-                    spotifyGetCurrentlyPlaying();
-                }
-            } catch (_) {}
-        }
-
-        async function spotifyGetCurrentlyPlaying() {
-            const token = localStorage.getItem('spotify-token');
-            if (!token) { spotifyConnect(); return; }
-            const statusEl = document.getElementById('spotify-status');
-            statusEl.textContent = 'Checking Spotify...';
-            try {
-                const res = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (res.status === 401) {
-                    localStorage.removeItem('spotify-token');
-                    document.getElementById('spotify-btn').textContent = '🎵 Connect Spotify';
-                    statusEl.textContent = 'Session expired — reconnect.';
-                    return;
-                }
-                if (res.status === 204 || !res.ok) {
-                    statusEl.textContent = 'Nothing playing right now.';
-                    return;
-                }
-                const data = await res.json();
-                if (data.item) {
-                    const artist = data.item.artists.map(a => a.name).join(', ');
-                    const song = data.item.name;
-                    document.getElementById('input-artist').value = artist;
-                    document.getElementById('input-song').value = song;
-                    statusEl.textContent = `Now playing: ${song} — ${artist}`;
-                    document.getElementById('spotify-btn').textContent = '🎵 Refresh';
-                    searchLyrics();
-                } else {
-                    statusEl.textContent = 'Nothing playing right now.';
-                }
-            } catch {
-                statusEl.textContent = 'Could not reach Spotify.';
-            }
-        }
-
-        spotifyHandleCallback();
     </script>
 
     </div><!-- end main-content -->

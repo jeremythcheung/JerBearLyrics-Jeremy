@@ -672,6 +672,45 @@
         .tier-free { color: #888; }
         .tier-searches { color: #1db954; }
         .tier-full { color: #f59e0b; }
+
+        /* Mood bar */
+        .mood-bar { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin-top:12px; }
+        .mood-btn { background:#1a1a1a; border:1px solid #333; color:#ccc; padding:6px 16px; border-radius:20px; cursor:pointer; font-size:0.85rem; transition:all 0.2s; }
+        .mood-btn:hover { border-color:#1db954; color:#1db954; }
+
+        /* Spotify bar */
+        #spotify-bar { display:flex; justify-content:center; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+        #spotify-btn { background:#1db954; color:#000; border:none; padding:7px 18px; border-radius:20px; font-weight:700; font-size:0.82rem; cursor:pointer; }
+        #spotify-btn:hover { background:#17a348; }
+        #spotify-status { color:#888; font-size:0.8rem; }
+
+        /* Result action buttons */
+        #result-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:14px; }
+        #result-actions button { padding:8px 16px; border-radius:8px; border:1px solid #333; background:#1a1a1a; color:#ccc; cursor:pointer; font-size:0.85rem; transition:all 0.2s; }
+        #result-actions button:hover { border-color:#1db954; color:#1db954; }
+
+        /* Guess mode */
+        #guess-box { display:none; margin-top:16px; text-align:center; }
+        #guess-box input { padding:10px 16px; border-radius:8px; border:2px solid #333; background:#111; color:#fff; font-size:1rem; width:240px; }
+        #guess-box input:focus { border-color:#1db954; outline:none; }
+        #guess-box button { margin-left:8px; padding:10px 18px; border-radius:8px; border:none; background:#1db954; color:#000; font-weight:600; cursor:pointer; }
+        #guess-result { margin-top:10px; font-size:0.9rem; color:#aaa; }
+
+        /* Karaoke overlay */
+        #karaoke-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.94); z-index:2000; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
+        #karaoke-overlay.active { display:flex; }
+        #karaoke-title-display { color:#888; font-size:0.9rem; margin-bottom:16px; text-align:center; }
+        #karaoke-box { max-width:680px; width:100%; max-height:60vh; overflow-y:auto; text-align:center; padding:10px; scrollbar-width:none; }
+        #karaoke-box::-webkit-scrollbar { display:none; }
+        .karaoke-line { font-size:1.2rem; color:#333; padding:10px 0; transition:all 0.3s; line-height:1.6; }
+        .karaoke-line.active { color:#1db954; font-size:1.6rem; font-weight:700; }
+        .karaoke-line.past { color:#555; }
+        #karaoke-controls { display:flex; gap:12px; margin-top:20px; flex-wrap:wrap; justify-content:center; align-items:center; }
+        #karaoke-controls button { padding:10px 24px; border-radius:8px; border:none; font-weight:600; cursor:pointer; font-size:0.95rem; }
+        #karaoke-start-btn { background:#1db954; color:#000; }
+        #karaoke-close-btn { background:#333; color:#fff; }
+        #karaoke-offset-wrap { color:#aaa; font-size:0.82rem; display:flex; align-items:center; gap:6px; }
+        #karaoke-offset { width:60px; padding:4px 8px; border-radius:6px; border:1px solid #444; background:#111; color:#fff; font-size:0.85rem; }
     </style>
 </head>
 <body>
@@ -712,6 +751,17 @@
             <input type="text" id="input-artist" placeholder="Artist name" />
             <input type="text" id="input-song" placeholder="Song title" />
             <button onclick="searchLyrics()">Search</button>
+        </div>
+        <div class="mood-bar">
+            <button class="mood-btn" onclick="moodSearch('happy')">😊 Happy</button>
+            <button class="mood-btn" onclick="moodSearch('sad')">😢 Sad</button>
+            <button class="mood-btn" onclick="moodSearch('hype')">🔥 Hype</button>
+            <button class="mood-btn" onclick="moodSearch('chill')">😌 Chill</button>
+            <button class="mood-btn" onclick="moodSearch('romantic')">💕 Romantic</button>
+        </div>
+        <div id="spotify-bar">
+            <button id="spotify-btn" onclick="spotifyConnect()">🎵 Connect Spotify</button>
+            <span id="spotify-status"></span>
         </div>
         <div style="display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin-top:14px;">
             <div class="nursery-toggle">
@@ -823,6 +873,28 @@
                 <span id="meta-artist"></span>
                 <span id="meta-date"></span>
             </div>
+            <div id="result-actions">
+                <button id="karaoke-btn" onclick="openKaraoke()" style="display:none;">🎤 Karaoke</button>
+                <button onclick="toggleGuess()">🎮 Guess the Song</button>
+            </div>
+            <div id="guess-box">
+                <input type="text" id="guess-input" placeholder="Artist or song title?" />
+                <button onclick="revealGuess()">Reveal</button>
+                <div id="guess-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="karaoke-overlay">
+        <div id="karaoke-title-display"></div>
+        <div id="karaoke-box"></div>
+        <div id="karaoke-controls">
+            <div id="karaoke-offset-wrap">
+                <span>Offset (s):</span>
+                <input type="number" id="karaoke-offset" value="0" step="0.5" min="-10" max="10" />
+            </div>
+            <button id="karaoke-start-btn" onclick="karaokeToggle()">▶ Start</button>
+            <button id="karaoke-close-btn" onclick="karaokeClose()">✕ Close</button>
         </div>
     </div>
 
@@ -954,7 +1026,7 @@
                 if (Array.isArray(lrcData) && lrcData.length > 0) {
                     const match  = lrcData[0];
                     const lyrics = match.plainLyrics || match.syncedLyrics;
-                    if (lyrics) return { lyrics: lyrics.trim(), artist: match.artistName, title: match.trackName };
+                    if (lyrics) return { lyrics: lyrics.trim(), artist: match.artistName, title: match.trackName, syncedLyrics: match.syncedLyrics || null };
                 }
             } catch (_) {}
 
@@ -965,7 +1037,7 @@
                 if (Array.isArray(lrcData) && lrcData.length > 0) {
                     const match  = lrcData[0];
                     const lyrics = match.plainLyrics || match.syncedLyrics;
-                    if (lyrics) return { lyrics: lyrics.trim(), artist: match.artistName, title: match.trackName };
+                    if (lyrics) return { lyrics: lyrics.trim(), artist: match.artistName, title: match.trackName, syncedLyrics: match.syncedLyrics || null };
                 }
             } catch (_) {}
 
@@ -2973,8 +3045,15 @@
                     incrementSearchCount();
                     document.getElementById('song-title').textContent = found.title;
                     document.getElementById('song-artist').textContent = isNursery ? 'Nursery Rhyme' : isMovie ? `From: ${artistRaw}` : found.artist;
+                    document.getElementById('song-title').style.visibility = 'visible';
+                    document.getElementById('song-artist').style.visibility = 'visible';
                     document.getElementById('lyrics-box').textContent = found.lyrics;
                     document.getElementById('song-meta').style.display = 'none';
+                    document.getElementById('guess-box').style.display = 'none';
+                    document.getElementById('guess-result').textContent = '';
+                    currentSyncedLyrics = found.syncedLyrics || null;
+                    currentSongInfo = { title: found.title, artist: found.artist };
+                    document.getElementById('karaoke-btn').style.display = currentSyncedLyrics ? 'inline-block' : 'none';
                     status.style.display = 'none';
                     result.style.display = 'block';
 
@@ -3264,6 +3343,272 @@
             saveNotifications(notifs);
             renderNotifications();
         }
+
+        // ── Globals ──────────────────────────────────────────────────────────
+        let currentSyncedLyrics = null;
+        let currentSongInfo = { title: '', artist: '' };
+        let karaokeLines = [];
+        let karaokeTimer = null;
+        let karaokeStartTime = null;
+        let karaokeRunning = false;
+        let karaokeElapsed = 0;
+
+        // ── Karaoke ──────────────────────────────────────────────────────────
+        function parseSyncedLyrics(raw) {
+            return raw.split('\n').map(line => {
+                const m = line.match(/^\[(\d+):(\d+\.\d+)\](.*)/);
+                if (!m) return null;
+                return { time: parseInt(m[1]) * 60 + parseFloat(m[2]), text: m[3].trim() };
+            }).filter(l => l && l.text);
+        }
+
+        function openKaraoke() {
+            if (!currentSyncedLyrics) return;
+            karaokeLines = parseSyncedLyrics(currentSyncedLyrics);
+            if (!karaokeLines.length) return;
+            const box = document.getElementById('karaoke-box');
+            box.innerHTML = karaokeLines.map((l, i) => `<div class="karaoke-line" id="kl-${i}">${l.text}</div>`).join('');
+            document.getElementById('karaoke-title-display').textContent = `${currentSongInfo.title} — ${currentSongInfo.artist}`;
+            document.getElementById('karaoke-overlay').classList.add('active');
+            document.getElementById('karaoke-start-btn').textContent = '▶ Start';
+            clearInterval(karaokeTimer);
+            karaokeRunning = false;
+            karaokeElapsed = 0;
+        }
+
+        function karaokeToggle() {
+            if (karaokeRunning) {
+                karaokeElapsed += (Date.now() - karaokeStartTime) / 1000;
+                clearInterval(karaokeTimer);
+                karaokeRunning = false;
+                document.getElementById('karaoke-start-btn').textContent = '▶ Resume';
+            } else {
+                karaokeStartTime = Date.now();
+                karaokeRunning = true;
+                document.getElementById('karaoke-start-btn').textContent = '⏸ Pause';
+                karaokeTimer = setInterval(karaokeTick, 100);
+            }
+        }
+
+        function karaokeTick() {
+            const offset = parseFloat(document.getElementById('karaoke-offset').value) || 0;
+            const elapsed = karaokeElapsed + (Date.now() - karaokeStartTime) / 1000 + offset;
+            let activeIdx = -1;
+            for (let i = karaokeLines.length - 1; i >= 0; i--) {
+                if (elapsed >= karaokeLines[i].time) { activeIdx = i; break; }
+            }
+            karaokeLines.forEach((_, i) => {
+                const el = document.getElementById(`kl-${i}`);
+                if (!el) return;
+                el.className = 'karaoke-line' + (i === activeIdx ? ' active' : i < activeIdx ? ' past' : '');
+            });
+            if (activeIdx >= 0) {
+                const el = document.getElementById(`kl-${activeIdx}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function karaokeClose() {
+            clearInterval(karaokeTimer);
+            karaokeRunning = false;
+            karaokeElapsed = 0;
+            document.getElementById('karaoke-overlay').classList.remove('active');
+        }
+
+        // ── Guess the Song ────────────────────────────────────────────────────
+        function toggleGuess() {
+            const guessBox = document.getElementById('guess-box');
+            const isHidden = guessBox.style.display === 'none' || guessBox.style.display === '';
+            if (isHidden) {
+                document.getElementById('song-title').style.visibility = 'hidden';
+                document.getElementById('song-artist').style.visibility = 'hidden';
+                document.getElementById('guess-input').value = '';
+                document.getElementById('guess-result').textContent = '';
+                guessBox.style.display = 'block';
+            } else {
+                document.getElementById('song-title').style.visibility = 'visible';
+                document.getElementById('song-artist').style.visibility = 'visible';
+                guessBox.style.display = 'none';
+            }
+        }
+
+        function revealGuess() {
+            document.getElementById('song-title').style.visibility = 'visible';
+            document.getElementById('song-artist').style.visibility = 'visible';
+            const t = document.getElementById('song-title').textContent;
+            const a = document.getElementById('song-artist').textContent;
+            document.getElementById('guess-result').textContent = `🎵 ${t} — ${a}`;
+        }
+
+        // ── Mood Search ───────────────────────────────────────────────────────
+        const moodPlaylists = {
+            happy: [
+                { artist: 'Pharrell Williams', song: 'Happy' },
+                { artist: 'Katy Perry', song: 'Roar' },
+                { artist: 'Justin Timberlake', song: "Can't Stop the Feeling" },
+                { artist: 'Lizzo', song: 'Good as Hell' },
+                { artist: 'Bruno Mars', song: 'Uptown Funk' },
+                { artist: 'Taylor Swift', song: 'Shake It Off' },
+                { artist: 'Dua Lipa', song: 'Levitating' },
+                { artist: 'Meghan Trainor', song: 'All About That Bass' },
+            ],
+            sad: [
+                { artist: 'Adele', song: 'Someone Like You' },
+                { artist: 'Lewis Capaldi', song: 'Someone You Loved' },
+                { artist: 'Billie Eilish', song: "when the party's over" },
+                { artist: 'The Fray', song: 'How to Save a Life' },
+                { artist: 'Olivia Rodrigo', song: 'drivers license' },
+                { artist: 'Taylor Swift', song: 'All Too Well' },
+                { artist: 'Sam Smith', song: 'Stay with Me' },
+                { artist: 'Bon Iver', song: 'Skinny Love' },
+            ],
+            hype: [
+                { artist: 'Eminem', song: 'Lose Yourself' },
+                { artist: 'Kendrick Lamar', song: 'HUMBLE.' },
+                { artist: 'Travis Scott', song: 'Sicko Mode' },
+                { artist: 'Drake', song: 'Started From the Bottom' },
+                { artist: 'Post Malone', song: 'Congratulations' },
+                { artist: 'Kanye West', song: 'POWER' },
+                { artist: 'Cardi B', song: 'Bodak Yellow' },
+                { artist: 'Lil Nas X', song: 'INDUSTRY BABY' },
+            ],
+            chill: [
+                { artist: 'Frank Ocean', song: 'Nights' },
+                { artist: 'Daniel Caesar', song: 'Best Part' },
+                { artist: 'SZA', song: 'Good Days' },
+                { artist: 'Tyler the Creator', song: 'See You Again' },
+                { artist: 'Khalid', song: 'Location' },
+                { artist: 'Steve Lacy', song: 'Dark Red' },
+                { artist: 'H.E.R.', song: 'Focus' },
+                { artist: 'Jhene Aiko', song: 'The Worst' },
+            ],
+            romantic: [
+                { artist: 'Ed Sheeran', song: 'Perfect' },
+                { artist: 'John Legend', song: 'All of Me' },
+                { artist: 'Bruno Mars', song: 'Just the Way You Are' },
+                { artist: 'Elton John', song: 'Your Song' },
+                { artist: 'Taylor Swift', song: 'Lover' },
+                { artist: 'Harry Styles', song: 'Watermelon Sugar' },
+                { artist: 'Beyonce', song: 'Crazy in Love' },
+                { artist: 'Shawn Mendes', song: 'Stitches' },
+            ]
+        };
+
+        function moodSearch(mood) {
+            const list = moodPlaylists[mood];
+            if (!list) return;
+            const pick = list[Math.floor(Math.random() * list.length)];
+            document.getElementById('input-artist').value = pick.artist;
+            document.getElementById('input-song').value = pick.song;
+            searchLyrics();
+        }
+
+        // ── Spotify Currently Playing ─────────────────────────────────────────
+        const SPOTIFY_CLIENT_ID = '';
+        const SPOTIFY_REDIRECT_URI = window.location.origin + '/';
+        const SPOTIFY_SCOPES = 'user-read-currently-playing user-read-playback-state';
+
+        function spotifyConnect() {
+            if (!SPOTIFY_CLIENT_ID) {
+                alert('Spotify is not set up yet. Ask the developer to add a Spotify Client ID.');
+                return;
+            }
+            if (localStorage.getItem('spotify-token')) {
+                spotifyGetCurrentlyPlaying();
+                return;
+            }
+            const verifier = generateVerifier(128);
+            localStorage.setItem('spotify-verifier', verifier);
+            generateChallenge(verifier).then(challenge => {
+                const params = new URLSearchParams({
+                    client_id: SPOTIFY_CLIENT_ID,
+                    response_type: 'code',
+                    redirect_uri: SPOTIFY_REDIRECT_URI,
+                    code_challenge_method: 'S256',
+                    code_challenge: challenge,
+                    scope: SPOTIFY_SCOPES,
+                    state: 'jbl-spotify'
+                });
+                window.location.href = 'https://accounts.spotify.com/authorize?' + params;
+            });
+        }
+
+        function generateVerifier(length) {
+            const arr = new Uint8Array(length);
+            crypto.getRandomValues(arr);
+            return btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+        }
+
+        async function generateChallenge(verifier) {
+            const data = new TextEncoder().encode(verifier);
+            const digest = await crypto.subtle.digest('SHA-256', data);
+            return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+        }
+
+        async function spotifyHandleCallback() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('state') !== 'jbl-spotify' || !params.get('code') || !SPOTIFY_CLIENT_ID) return;
+            const code = params.get('code');
+            const verifier = localStorage.getItem('spotify-verifier');
+            window.history.replaceState({}, '', '/');
+            try {
+                const res = await fetch('https://accounts.spotify.com/api/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        client_id: SPOTIFY_CLIENT_ID,
+                        grant_type: 'authorization_code',
+                        code,
+                        redirect_uri: SPOTIFY_REDIRECT_URI,
+                        code_verifier: verifier
+                    })
+                });
+                const data = await res.json();
+                if (data.access_token) {
+                    localStorage.setItem('spotify-token', data.access_token);
+                    document.getElementById('spotify-btn').textContent = '🎵 What\'s Playing?';
+                    spotifyGetCurrentlyPlaying();
+                }
+            } catch (_) {}
+        }
+
+        async function spotifyGetCurrentlyPlaying() {
+            const token = localStorage.getItem('spotify-token');
+            if (!token) { spotifyConnect(); return; }
+            const statusEl = document.getElementById('spotify-status');
+            statusEl.textContent = 'Checking Spotify...';
+            try {
+                const res = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.status === 401) {
+                    localStorage.removeItem('spotify-token');
+                    document.getElementById('spotify-btn').textContent = '🎵 Connect Spotify';
+                    statusEl.textContent = 'Session expired — reconnect.';
+                    return;
+                }
+                if (res.status === 204 || !res.ok) {
+                    statusEl.textContent = 'Nothing playing right now.';
+                    return;
+                }
+                const data = await res.json();
+                if (data.item) {
+                    const artist = data.item.artists.map(a => a.name).join(', ');
+                    const song = data.item.name;
+                    document.getElementById('input-artist').value = artist;
+                    document.getElementById('input-song').value = song;
+                    statusEl.textContent = `Now playing: ${song} — ${artist}`;
+                    document.getElementById('spotify-btn').textContent = '🎵 Refresh';
+                    searchLyrics();
+                } else {
+                    statusEl.textContent = 'Nothing playing right now.';
+                }
+            } catch {
+                statusEl.textContent = 'Could not reach Spotify.';
+            }
+        }
+
+        spotifyHandleCallback();
     </script>
 
     </div><!-- end main-content -->

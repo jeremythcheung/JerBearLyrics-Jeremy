@@ -875,6 +875,7 @@
             <div id="result-actions">
                 <button id="karaoke-btn" onclick="openKaraoke()" style="display:none;">🎤 Karaoke</button>
                 <button onclick="toggleGuess()">🎮 Guess the Song</button>
+                <button onclick="findKaraoke()">🎵 Find Karaoke</button>
             </div>
             <div id="guess-box">
                 <input type="text" id="guess-input" placeholder="Artist or song title?" />
@@ -3500,6 +3501,14 @@
             document.getElementById('input-artist').value = pick.artist;
             document.getElementById('input-song').value = pick.song;
             searchLyrics();
+        }
+
+        // ── Find Karaoke ─────────────────────────────────────────────────────
+        function findKaraoke() {
+            const title = document.getElementById('song-title').textContent;
+            const artist = document.getElementById('song-artist').textContent;
+            const query = encodeURIComponent(`${artist} ${title} karaoke`);
+            window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
         }
 
         // ── What are you listening to? ────────────────────────────────────────

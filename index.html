@@ -3190,7 +3190,7 @@
             const tbody = document.getElementById('admin-tbody');
             tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
             try {
-                const res = await fetch('/.netlify/functions/admin-users', {
+                const res = await fetch('/api/admin-users', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ secret: 'jerbear-admin-2026' })
@@ -3216,7 +3216,7 @@
             const email = sessionStorage.getItem('jbl-email');
             if (!email) return;
             try {
-                const res = await fetch('/.netlify/functions/check-premium', {
+                const res = await fetch('/api/check-premium', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email })

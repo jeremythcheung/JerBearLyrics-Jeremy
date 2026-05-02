@@ -3128,9 +3128,9 @@
                     document.getElementById('song-meta').style.display = 'none';
                     document.getElementById('guess-box').style.display = 'none';
                     document.getElementById('guess-result').textContent = '';
-                    currentSyncedLyrics = found.syncedLyrics || null;
+                    currentSyncedLyrics = found.syncedLyrics || plainToFakeSynced(found.lyrics);
                     currentSongInfo = { title: found.title, artist: found.artist };
-                    document.getElementById('karaoke-btn').style.display = currentSyncedLyrics ? 'inline-block' : 'none';
+                    document.getElementById('karaoke-btn').style.display = 'inline-block';
                     status.style.display = 'none';
                     result.style.display = 'block';
                     if (wasKaraokeOpen && currentSyncedLyrics) { openKaraoke(); karaokeToggle(); }

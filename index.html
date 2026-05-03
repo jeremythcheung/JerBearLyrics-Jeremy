@@ -1097,6 +1097,15 @@
                 }
             } catch (_) {}
 
+            // Source 6: Genius via Vercel function (API search + page scrape)
+            try {
+                const geniusRes  = await fetch(`/api/genius-lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`, { signal: AbortSignal.timeout(10000) });
+                const geniusData = await geniusRes.json();
+                if (geniusData.lyrics && !geniusData.error) {
+                    return { lyrics: geniusData.lyrics.trim(), artist: geniusData.artist || artist, title: geniusData.title || title };
+                }
+            } catch (_) {}
+
             return null;
         }
 

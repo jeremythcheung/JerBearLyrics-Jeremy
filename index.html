@@ -511,7 +511,6 @@
         #guess-panel-body input:focus { border-color: #7c3aed; outline: none; }
         .guess-btn-row { display: flex; gap: 8px; width: 100%; }
         #guess-panel-body button.gbtn {
-            flex: 1;
             padding: 11px;
             border-radius: 8px;
             border: none;
@@ -521,12 +520,14 @@
             font-size: 0.95rem;
             cursor: pointer;
             transition: background 0.2s;
+            width: 100%;
         }
         #guess-panel-body button.gbtn:hover { background: #6d28d9; }
         #guess-panel-body button.gbtn.secondary { background: #333; color: #ccc; }
         #guess-panel-body button.gbtn.secondary:hover { background: #444; }
         #guess-panel-body button.gbtn.success { background: #1db954; color: #000; }
         #guess-panel-body button.gbtn.success:hover { background: #17a348; }
+        .guess-btn-row button.gbtn { width: auto; flex: 1; }
         #guess-feedback { font-size: 0.9rem; font-weight: 600; min-height: 1.2em; text-align: center; }
         #guess-feedback.correct { color: #1db954; }
         #guess-feedback.wrong { color: #e05555; }
@@ -969,7 +970,7 @@
                 </div>
                 <div id="guess-feedback"></div>
                 <div id="guess-panel-result"></div>
-                <button class="gbtn success" id="guess-next-btn" onclick="startGuessGame()" style="display:none;width:100%">Next &#8594;</button>
+                <button class="gbtn success" id="guess-next-btn" onclick="startGuessGame()" style="display:none">Next &#8594;</button>
             </div>
         </div>
     </div>

@@ -469,12 +469,26 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 24px 20px;
-            gap: 14px;
-            text-align: center;
+            padding: 20px;
+            gap: 12px;
+            overflow-y: auto;
         }
-        #guess-panel-body p { color: #888; font-size: 0.9rem; line-height: 1.5; }
+        #guess-start-screen { text-align: center; margin: auto 0; display: flex; flex-direction: column; gap: 14px; align-items: center; }
+        #guess-start-screen p { color: #888; font-size: 0.9rem; line-height: 1.5; }
+        #guess-game-screen { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+        #guess-lyric-line {
+            color: #f0f0f0;
+            font-size: 1rem;
+            font-style: italic;
+            line-height: 1.6;
+            padding: 16px;
+            background: #222;
+            border-radius: 8px;
+            border-left: 3px solid #7c3aed;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #guess-hint { color: #888; font-size: 0.78rem; }
         #guess-panel-body input {
             padding: 10px 16px;
             border-radius: 8px;
@@ -486,20 +500,28 @@
             box-sizing: border-box;
         }
         #guess-panel-body input:focus { border-color: #7c3aed; outline: none; }
-        #guess-panel-body button.reveal-btn {
-            width: 100%;
+        .guess-btn-row { display: flex; gap: 8px; width: 100%; }
+        #guess-panel-body button.gbtn {
+            flex: 1;
             padding: 11px;
             border-radius: 8px;
             border: none;
             background: #7c3aed;
             color: #fff;
             font-weight: 600;
-            font-size: 1rem;
+            font-size: 0.95rem;
             cursor: pointer;
             transition: background 0.2s;
         }
-        #guess-panel-body button.reveal-btn:hover { background: #6d28d9; }
-        #guess-panel-result { color: #1db954; font-size: 0.95rem; font-weight: 600; min-height: 1.2em; }
+        #guess-panel-body button.gbtn:hover { background: #6d28d9; }
+        #guess-panel-body button.gbtn.secondary { background: #333; color: #ccc; }
+        #guess-panel-body button.gbtn.secondary:hover { background: #444; }
+        #guess-panel-body button.gbtn.success { background: #1db954; color: #000; }
+        #guess-panel-body button.gbtn.success:hover { background: #17a348; }
+        #guess-feedback { font-size: 0.9rem; font-weight: 600; min-height: 1.2em; text-align: center; }
+        #guess-feedback.correct { color: #1db954; }
+        #guess-feedback.wrong { color: #e05555; }
+        #guess-panel-result { color: #aaa; font-size: 0.88rem; text-align: center; line-height: 1.4; }
 
         .notif-header {
             padding: 20px;
@@ -923,10 +945,22 @@
             <button onclick="toggleGuessPanel()">✕</button>
         </div>
         <div id="guess-panel-body">
-            <p id="guess-panel-prompt">Load a song first, then open this panel to hide the title and test yourself!</p>
-            <input type="text" id="guess-input" placeholder="Artist or song title?" style="display:none" />
-            <button class="reveal-btn" id="guess-reveal-btn" onclick="revealGuess()" style="display:none">Reveal Answer</button>
-            <div id="guess-panel-result"></div>
+            <div id="guess-start-screen">
+                <p>A random lyric line from our built-in library is shown — guess the song!</p>
+                <button class="gbtn" onclick="startGuessGame()">&#9654; Play</button>
+            </div>
+            <div id="guess-game-screen" style="display:none">
+                <div id="guess-lyric-line"></div>
+                <div id="guess-hint"></div>
+                <input type="text" id="guess-input" placeholder="Song title..." onkeydown="if(event.key==='Enter')checkGuess()" />
+                <div class="guess-btn-row">
+                    <button class="gbtn" onclick="checkGuess()">Submit</button>
+                    <button class="gbtn secondary" onclick="giveUpGuess()">Give Up</button>
+                </div>
+                <div id="guess-feedback"></div>
+                <div id="guess-panel-result"></div>
+                <button class="gbtn success" id="guess-next-btn" onclick="startGuessGame()" style="display:none;width:100%">Next &#8594;</button>
+            </div>
         </div>
     </div>
 
@@ -3202,7 +3236,6 @@
                             currentSyncedLyrics = plainToFakeSynced(lyr);
                             currentSongInfo = { title: displayTitle, artist: artistRaw };
                             document.getElementById('karaoke-btn').style.display = 'inline-block';
-                            resetGuessPanel();
                             incrementSearchCount();
                             status.style.display = 'none';
                             result.style.display = 'block';
@@ -3229,7 +3262,6 @@
                             currentSyncedLyrics = plainToFakeSynced(lyr);
                             currentSongInfo = { title: resolved.title, artist: artistRaw };
                             document.getElementById('karaoke-btn').style.display = 'inline-block';
-                            resetGuessPanel();
                             incrementSearchCount();
                             status.style.display = 'none';
                             result.style.display = 'block';
@@ -3264,7 +3296,6 @@
                     document.getElementById('song-artist').style.visibility = 'visible';
                     document.getElementById('lyrics-box').textContent = found.lyrics;
                     document.getElementById('song-meta').style.display = 'none';
-                    resetGuessPanel();
                     currentSyncedLyrics = found.syncedLyrics || plainToFakeSynced(found.lyrics);
                     currentSongInfo = { title: found.title, artist: found.artist };
                     document.getElementById('karaoke-btn').style.display = 'inline-block';
@@ -3655,64 +3686,94 @@
         }
 
         // ── Guess the Song ────────────────────────────────────────────────────
+        let _currentGuessGame = null;
+
         function toggleGuessPanel() {
             if (!requireFullPremium('Guess the Song')) return;
             const panel = document.getElementById('guess-panel');
             const overlay = document.getElementById('guess-overlay');
-            const isOpening = !panel.classList.contains('open');
-
-            if (isOpening) {
-                const songLoaded = document.getElementById('result').style.display !== 'none';
-                const prompt = document.getElementById('guess-panel-prompt');
-                const input = document.getElementById('guess-input');
-                const btn = document.getElementById('guess-reveal-btn');
-                const result = document.getElementById('guess-panel-result');
-
-                if (songLoaded) {
-                    document.getElementById('song-title').style.visibility = 'hidden';
-                    document.getElementById('song-artist').style.visibility = 'hidden';
-                    prompt.textContent = 'The title and artist are hidden. Can you guess the song from the lyrics?';
-                    input.value = '';
-                    input.style.display = 'block';
-                    btn.style.display = 'block';
-                    result.textContent = '';
-                } else {
-                    prompt.textContent = 'Load a song first, then open this panel to hide the title and test yourself!';
-                    input.style.display = 'none';
-                    btn.style.display = 'none';
-                    result.textContent = '';
-                }
-            } else {
-                document.getElementById('song-title').style.visibility = 'visible';
-                document.getElementById('song-artist').style.visibility = 'visible';
-            }
-
             panel.classList.toggle('open');
             overlay.classList.toggle('open');
         }
 
-        function revealGuess() {
-            document.getElementById('song-title').style.visibility = 'visible';
-            document.getElementById('song-artist').style.visibility = 'visible';
-            const t = document.getElementById('song-title').textContent;
-            const a = document.getElementById('song-artist').textContent;
-            document.getElementById('guess-panel-result').textContent = `🎵 ${t} — ${a}`;
+        function buildGuessSongPool() {
+            const pool = [];
+            // Pokémon lyrics (arrays of lines)
+            for (const key of Object.keys(pokemonLyrics)) {
+                const lines = pokemonLyrics[key];
+                if (!Array.isArray(lines)) continue;
+                const goodLines = lines.filter(l => l.trim().length > 4 && !l.startsWith('('));
+                if (!goodLines.length) continue;
+                const theme = pokemonThemes.find(t => t.songKeys.some(sk => sk === key));
+                const title = theme ? theme.title : key.replace(/\b\w/g, c => c.toUpperCase());
+                const artist = theme ? theme.artist : 'Pokémon';
+                pool.push({ title, artist, lines: goodLines });
+            }
+            // Nursery rhymes (newline-separated strings)
+            for (const key of Object.keys(nurseryRhymes)) {
+                const lines = nurseryRhymes[key].split('\n').filter(l => l.trim().length > 4);
+                if (!lines.length) continue;
+                const title = key.replace(/\b\w/g, c => c.toUpperCase());
+                pool.push({ title, artist: 'Nursery Rhyme', lines });
+            }
+            return pool;
         }
 
-        function resetGuessPanel() {
-            document.getElementById('song-title').style.visibility = 'visible';
-            document.getElementById('song-artist').style.visibility = 'visible';
-            const panel = document.getElementById('guess-panel');
-            const overlay = document.getElementById('guess-overlay');
-            if (panel.classList.contains('open')) {
-                panel.classList.remove('open');
-                overlay.classList.remove('open');
-            }
+        function startGuessGame() {
+            const pool = buildGuessSongPool();
+            const song = pool[Math.floor(Math.random() * pool.length)];
+            const line = song.lines[Math.floor(Math.random() * song.lines.length)];
+            _currentGuessGame = { title: song.title, artist: song.artist, line };
+
+            document.getElementById('guess-start-screen').style.display = 'none';
+            document.getElementById('guess-game-screen').style.display = 'flex';
+            document.getElementById('guess-game-screen').style.flexDirection = 'column';
+            document.getElementById('guess-lyric-line').textContent = `"${line}"`;
+            document.getElementById('guess-hint').textContent = '';
             document.getElementById('guess-input').value = '';
+            document.getElementById('guess-input').disabled = false;
+            document.getElementById('guess-feedback').textContent = '';
+            document.getElementById('guess-feedback').className = '';
             document.getElementById('guess-panel-result').textContent = '';
-            document.getElementById('guess-input').style.display = 'none';
-            document.getElementById('guess-reveal-btn').style.display = 'none';
-            document.getElementById('guess-panel-prompt').textContent = 'Load a song first, then open this panel to hide the title and test yourself!';
+            document.getElementById('guess-next-btn').style.display = 'none';
+            document.getElementById('guess-input').focus();
+        }
+
+        function isGuessCorrect(guess, title) {
+            const norm = s => s.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+            const g = norm(guess), t = norm(title);
+            if (!g) return false;
+            if (t.includes(g) || g.includes(t)) return true;
+            const gWords = g.split(' ').filter(w => w.length > 3);
+            const tWords = t.split(' ').filter(w => w.length > 3);
+            return gWords.length > 0 && gWords.some(w => tWords.includes(w));
+        }
+
+        function checkGuess() {
+            if (!_currentGuessGame) return;
+            const input = document.getElementById('guess-input').value.trim();
+            if (!input) return;
+            const feedback = document.getElementById('guess-feedback');
+            if (isGuessCorrect(input, _currentGuessGame.title)) {
+                feedback.textContent = '✓ Correct!';
+                feedback.className = 'correct';
+                document.getElementById('guess-panel-result').textContent = `🎵 ${_currentGuessGame.title} — ${_currentGuessGame.artist}`;
+                document.getElementById('guess-input').disabled = true;
+                document.getElementById('guess-next-btn').style.display = 'block';
+            } else {
+                feedback.textContent = '✗ Not quite — try again!';
+                feedback.className = 'wrong';
+            }
+        }
+
+        function giveUpGuess() {
+            if (!_currentGuessGame) return;
+            const feedback = document.getElementById('guess-feedback');
+            feedback.textContent = 'Better luck next time!';
+            feedback.className = '';
+            document.getElementById('guess-panel-result').textContent = `🎵 ${_currentGuessGame.title} — ${_currentGuessGame.artist}`;
+            document.getElementById('guess-input').disabled = true;
+            document.getElementById('guess-next-btn').style.display = 'block';
         }
 
         // ── Mood Search ───────────────────────────────────────────────────────

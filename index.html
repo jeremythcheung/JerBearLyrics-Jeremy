@@ -823,8 +823,9 @@
         #karaoke-close-btn { background:#333; color:#fff; }
         #karaoke-offset-wrap { color:#aaa; font-size:0.82rem; display:flex; align-items:center; gap:6px; }
         #karaoke-offset { width:60px; padding:4px 8px; border-radius:6px; border:1px solid #444; background:#111; color:#fff; font-size:0.85rem; }
-        #karaoke-yt { width:100%; max-width:560px; aspect-ratio:16/9; border:none; border-radius:10px; margin-bottom:16px; display:none; }
-        #karaoke-yt.visible { display:block; }
+        #karaoke-yt-wrap { width:100%; max-width:560px; aspect-ratio:16/9; border-radius:10px; margin-bottom:16px; display:none; overflow:hidden; }
+        #karaoke-yt-wrap.visible { display:block; }
+        #karaoke-yt { width:100%; height:100%; }
         #karaoke-instrumental-btn { background:#c00; color:#fff; }
     </style>
 </head>
@@ -1027,7 +1028,7 @@
 
     <div id="karaoke-overlay">
         <div id="karaoke-title-display"></div>
-        <iframe id="karaoke-yt" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        <div id="karaoke-yt-wrap"><div id="karaoke-yt"></div></div>
         <div id="karaoke-box"></div>
         <div id="karaoke-controls">
             <div id="karaoke-offset-wrap">
@@ -3727,7 +3728,7 @@
 
         async function loadInstrumental() {
             loadYTScript();
-            const yt = document.getElementById('karaoke-yt');
+            const wrap = document.getElementById('karaoke-yt-wrap');
             const btn = document.getElementById('karaoke-instrumental-btn');
             btn.textContent = '⏳ Loading...';
             btn.disabled = true;
@@ -3736,17 +3737,27 @@
                 const res = await fetch(`https://jer-bear-lyrics-jeremy.vercel.app/api/youtube-search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(8000) });
                 const data = await res.json();
                 if (!data.videoId) throw new Error('No video found');
-                yt.src = `https://www.youtube.com/embed/${data.videoId}?autoplay=1&enablejsapi=1`;
-                yt.classList.add('visible');
+
                 ytPlayer = null;
-                const tryBindPlayer = () => {
-                    if (window.YT && window.YT.Player) {
-                        ytPlayer = new YT.Player('karaoke-yt');
-                    } else {
-                        setTimeout(tryBindPlayer, 200);
-                    }
+                document.getElementById('karaoke-yt').innerHTML = '';
+
+                const createPlayer = (videoId) => {
+                    ytPlayer = new YT.Player('karaoke-yt', {
+                        videoId,
+                        width: '100%',
+                        height: '100%',
+                        playerVars: { autoplay: 1, rel: 0 },
+                        events: { onReady: e => e.target.playVideo() }
+                    });
+                    wrap.classList.add('visible');
                 };
-                setTimeout(tryBindPlayer, 800);
+
+                if (window.YT && window.YT.Player) {
+                    createPlayer(data.videoId);
+                } else {
+                    window.onYouTubeIframeAPIReady = () => createPlayer(data.videoId);
+                }
+
                 btn.textContent = '🎵 Instrumental';
             } catch (e) {
                 btn.textContent = '❌ Not Found';
@@ -3760,10 +3771,10 @@
             clearInterval(karaokeTimer);
             karaokeRunning = false;
             karaokeElapsed = 0;
+            if (ytPlayer && typeof ytPlayer.destroy === 'function') ytPlayer.destroy();
             ytPlayer = null;
-            const yt = document.getElementById('karaoke-yt');
-            yt.src = '';
-            yt.classList.remove('visible');
+            document.getElementById('karaoke-yt').innerHTML = '';
+            document.getElementById('karaoke-yt-wrap').classList.remove('visible');
             document.getElementById('karaoke-overlay').classList.remove('active');
         }
 

@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="JerbearLyrics">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src *; img-src 'self' data: https:; frame-src https://accounts.google.com https://www.youtube.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src *; img-src 'self' data: https:; frame-src https://accounts.google.com https://www.youtube.com;">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.svg">
@@ -3641,6 +3641,14 @@
         let karaokeStartTime = null;
         let karaokeRunning = false;
         let karaokeElapsed = 0;
+        let ytPlayer = null;
+
+        function loadYTScript() {
+            if (window.YT || document.querySelector('script[src*="youtube.com/iframe_api"]')) return;
+            const tag = document.createElement('script');
+            tag.src = 'https://www.youtube.com/iframe_api';
+            document.head.appendChild(tag);
+        }
 
         // ── Karaoke ──────────────────────────────────────────────────────────
         function plainToFakeSynced(text) {
@@ -3684,17 +3692,24 @@
                 clearInterval(karaokeTimer);
                 karaokeRunning = false;
                 document.getElementById('karaoke-start-btn').textContent = '▶ Resume';
+                if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') ytPlayer.pauseVideo();
             } else {
                 karaokeStartTime = Date.now();
                 karaokeRunning = true;
                 document.getElementById('karaoke-start-btn').textContent = '⏸ Pause';
                 karaokeTimer = setInterval(karaokeTick, 100);
+                if (ytPlayer && typeof ytPlayer.playVideo === 'function') ytPlayer.playVideo();
             }
         }
 
         function karaokeTick() {
             const offset = parseFloat(document.getElementById('karaoke-offset').value) || 0;
-            const elapsed = karaokeElapsed + (Date.now() - karaokeStartTime) / 1000 + offset;
+            let elapsed;
+            if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+                try { elapsed = ytPlayer.getCurrentTime() + offset; } catch(e) { elapsed = karaokeElapsed + (Date.now() - karaokeStartTime) / 1000 + offset; }
+            } else {
+                elapsed = karaokeElapsed + (Date.now() - karaokeStartTime) / 1000 + offset;
+            }
             let activeIdx = -1;
             for (let i = karaokeLines.length - 1; i >= 0; i--) {
                 if (elapsed >= karaokeLines[i].time) { activeIdx = i; break; }
@@ -3711,6 +3726,7 @@
         }
 
         async function loadInstrumental() {
+            loadYTScript();
             const yt = document.getElementById('karaoke-yt');
             const btn = document.getElementById('karaoke-instrumental-btn');
             btn.textContent = '⏳ Loading...';
@@ -3720,8 +3736,17 @@
                 const res = await fetch(`https://jer-bear-lyrics-jeremy.vercel.app/api/youtube-search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(8000) });
                 const data = await res.json();
                 if (!data.videoId) throw new Error('No video found');
-                yt.src = `https://www.youtube.com/embed/${data.videoId}?autoplay=1`;
+                yt.src = `https://www.youtube.com/embed/${data.videoId}?autoplay=1&enablejsapi=1`;
                 yt.classList.add('visible');
+                ytPlayer = null;
+                const tryBindPlayer = () => {
+                    if (window.YT && window.YT.Player) {
+                        ytPlayer = new YT.Player('karaoke-yt');
+                    } else {
+                        setTimeout(tryBindPlayer, 200);
+                    }
+                };
+                setTimeout(tryBindPlayer, 800);
                 btn.textContent = '🎵 Instrumental';
             } catch (e) {
                 btn.textContent = '❌ Not Found';
@@ -3735,6 +3760,7 @@
             clearInterval(karaokeTimer);
             karaokeRunning = false;
             karaokeElapsed = 0;
+            ytPlayer = null;
             const yt = document.getElementById('karaoke-yt');
             yt.src = '';
             yt.classList.remove('visible');

@@ -962,7 +962,6 @@
             <div id="guess-game-screen" style="display:none">
                 <div id="guess-lyric-line"></div>
                 <div id="guess-hints-list"></div>
-                <button class="gbtn secondary" id="guess-hint-btn" onclick="useHint()">&#128161; Hint (1/3)</button>
                 <input type="text" id="guess-input" placeholder="Song title..." onkeydown="if(event.key==='Enter')checkGuess()" />
                 <div class="guess-btn-row">
                     <button class="gbtn" onclick="checkGuess()">Submit</button>
@@ -1132,6 +1131,15 @@
             "hot cross buns": `Hot cross buns! Hot cross buns!\nOne a penny, two a penny,\nHot cross buns!\nIf you have no daughters,\nGive them to your sons.\nOne a penny, two a penny,\nHot cross buns!`,
 
             "this little piggy": `This little piggy went to market,\nThis little piggy stayed home,\nThis little piggy had roast beef,\nThis little piggy had none,\nAnd this little piggy cried wee wee wee,\nAll the way home.`
+        };
+
+        // Hardcoded lyrics for songs not found by external APIs
+        const hardcodedSongs = {
+            "michael dimuccio|plans": {
+                artist: "Michael DiMuccio",
+                title: "Plans",
+                lyrics: `[Verse 1]\nYou fuck me up in the best way\nTaking up all my headspace\nI should be working, instead\nI'm spending hours in bed\nResearching places for first dates\nI've always been so productive\nNot trying to find out what love is\nBut then you came out the blue\nBlew up the world that I knew\nCancel my day 'cause I'm lovesick\n\n[Pre-Chorus]\nOne second. I knew where I was going\nNow I got to love not knowing\nGo ahead and\n\n[Chorus]\nCross off the rest of the thoughts in my head\nForget everything I was gonna do\nI'm not even mad about it\nAll my plans are looking better\nWhen they look like you\nI've seen enough of all of my friends\nDancing with you is all I want to do\nTime stops with you in that dress\nAll my plans are looking better\nWhen they look like you\n\n[Verse 2]\nEven if it's a disaster\nI'll have the memory after\nFalling too fast to be safe\nI should be hitting the breaks\nBut I'm only driving faster\n\n[Pre-Chorus]\nOh I don't care where I was going\nNow I'm going where you're going\nBaby you can go ahead\n\n[Chorus]\nCross off the rest of the thoughts in my head\nForget everything I was gonna do\nI'm not even mad about it\nAll my plans are looking better\nWhen they look like you\nI've seen enough of all of my friends\nDancing with you is all I want to do\nTime stops with you in that dress\nAll my plans are looking better\nWhen they look like you\n\n[Bridge]\n(Oh)\nYeah I'm planning how the future could be\nYeah I'm planning on how good it looks\nWith you next to me\n(Oh)\nTunnel vision building all of my dreams\nNow you're all that I see\nNow you're all that I see\n\n[Chorus]\nCross off the rest of the thoughts in my head\nForget everything I was gonna do\nI'm not even mad about it\nAll my plans are looking better\nWhen they look like you\nI've seen enough of all of my friends\nDancing with you is all I want to do\nTime stops with you in that dress\nAll my plans are looking better\nWhen they look like you\nNow my plans are looking better when they look like you`
+            }
         };
 
         function numberToWords(n) {
@@ -3284,6 +3292,29 @@
                     }
                 }
 
+                // Check hardcoded songs first
+                const hardcodedKey = `${normalizeStr(searchArtist)}|${normalizeStr(searchSong)}`;
+                const hardcodedMatch = hardcodedSongs[hardcodedKey];
+                if (hardcodedMatch) {
+                    let lyr = hardcodedMatch.lyrics;
+                    const selectedLang = canTranslate() ? (document.getElementById('translate-lang').value || '') : '';
+                    if (selectedLang) { status.textContent = 'Translating...'; lyr = await translateLyrics(lyr, selectedLang); }
+                    incrementSearchCount();
+                    document.getElementById('song-title').textContent = hardcodedMatch.title;
+                    document.getElementById('song-artist').textContent = hardcodedMatch.artist;
+                    document.getElementById('song-title').style.visibility = 'visible';
+                    document.getElementById('song-artist').style.visibility = 'visible';
+                    document.getElementById('lyrics-box').textContent = lyr;
+                    document.getElementById('song-meta').style.display = 'none';
+                    currentSyncedLyrics = plainToFakeSynced(lyr);
+                    currentSongInfo = { title: hardcodedMatch.title, artist: hardcodedMatch.artist };
+                    document.getElementById('karaoke-btn').style.display = 'inline-block';
+                    status.style.display = 'none';
+                    result.style.display = 'block';
+                    if (wasKaraokeOpen && currentSyncedLyrics) { openKaraoke(); karaokeToggle(); }
+                    return;
+                }
+
                 // Try original title first
                 let found = await fetchLyrics(searchArtist, searchSong);
 
@@ -3741,9 +3772,6 @@
             document.getElementById('guess-game-screen').style.flexDirection = 'column';
             document.getElementById('guess-lyric-line').textContent = `"${line}"`;
             document.getElementById('guess-hints-list').innerHTML = '';
-            const hintBtn = document.getElementById('guess-hint-btn');
-            hintBtn.disabled = false;
-            hintBtn.textContent = '💡 Hint (1/3)';
             document.getElementById('guess-input').value = '';
             document.getElementById('guess-input').disabled = false;
             document.getElementById('guess-feedback').textContent = '';
@@ -3875,6 +3903,7 @@
                 { artist: 'Harry Styles', song: 'Watermelon Sugar' },
                 { artist: 'Beyonce', song: 'Crazy in Love' },
                 { artist: 'Shawn Mendes', song: 'Stitches' },
+                { artist: 'Michael DiMuccio', song: 'Plans' },
             ]
         };
 

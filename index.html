@@ -3717,7 +3717,7 @@
             btn.disabled = true;
             try {
                 const query = `${currentSongInfo.title} ${currentSongInfo.artist} karaoke instrumental`;
-                const res = await fetch(`/api/youtube-search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(8000) });
+                const res = await fetch(`https://jer-bear-lyrics-jeremy.vercel.app/api/youtube-search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(8000) });
                 const data = await res.json();
                 if (!data.videoId) throw new Error('No video found');
                 yt.src = `https://www.youtube.com/embed/${data.videoId}?autoplay=1`;

@@ -3710,11 +3710,25 @@
             }
         }
 
-        function loadInstrumental() {
+        async function loadInstrumental() {
             const yt = document.getElementById('karaoke-yt');
-            const query = encodeURIComponent(`${currentSongInfo.title} ${currentSongInfo.artist} karaoke instrumental`);
-            yt.src = `https://www.youtube.com/embed?listType=search&list=${query}&autoplay=1`;
-            yt.classList.add('visible');
+            const btn = document.getElementById('karaoke-instrumental-btn');
+            btn.textContent = '⏳ Loading...';
+            btn.disabled = true;
+            try {
+                const query = `${currentSongInfo.title} ${currentSongInfo.artist} karaoke instrumental`;
+                const res = await fetch(`/api/youtube-search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(8000) });
+                const data = await res.json();
+                if (!data.videoId) throw new Error('No video found');
+                yt.src = `https://www.youtube.com/embed/${data.videoId}?autoplay=1`;
+                yt.classList.add('visible');
+                btn.textContent = '🎵 Instrumental';
+            } catch (e) {
+                btn.textContent = '❌ Not Found';
+                setTimeout(() => { btn.textContent = '🎵 Instrumental'; }, 2000);
+            } finally {
+                btn.disabled = false;
+            }
         }
 
         function karaokeClose() {

@@ -2876,7 +2876,7 @@
             if (isBible) {
                 artistInput.placeholder = 'Book (e.g. John, Genesis, Luke 5-9)';
                 artistInput.disabled = false;
-                songInput.placeholder  = 'Reference (e.g. 3:16, 3:1-20, 5-9)';
+                songInput.placeholder  = 'Reference (e.g. 3:16, 3:1-20, 5-9, 5:7-8,9:1-2)';
             } else if (isMovie) {
                 artistInput.placeholder = 'Movie / TV show name';
                 songInput.placeholder   = 'Song title';
@@ -3170,21 +3170,7 @@
             return bestDistance <= 2 ? bestMatch : bookName;
         }
 
-        function parseBibleLookup(book, ref) {
-            let bookName = book.trim();
-            let reference = ref.trim();
-
-            if (!reference) {
-                const fullLookup = bookName.match(/^(.+?)\s+(\d+(?::\d+)?(?:\s*-\s*\d+(?::\d+)?)?)$/);
-                if (fullLookup) {
-                    bookName = fullLookup[1].trim();
-                    reference = fullLookup[2].trim();
-                }
-            }
-
-            if (!bookName || !reference) throw new Error('Please enter a book name and reference.');
-            bookName = normalizeBibleBookName(bookName);
-
+        function buildBibleQueriesForReference(bookName, reference) {
             const chapterRange = reference.match(/^(\d+)\s*-\s*(\d+)$/);
             if (!chapterRange) return [`${bookName} ${reference}`];
 
@@ -3198,6 +3184,28 @@
                 queries.push(`${bookName} ${chapter}`);
             }
             return queries;
+        }
+
+        function parseBibleLookup(book, ref) {
+            let bookName = book.trim();
+            let reference = ref.trim();
+
+            if (!reference) {
+                const fullLookup = bookName.match(/^(.+?)\s+(\d+(?::\d+)?(?:\s*-\s*\d+(?::\d+)?)?(?:\s*,\s*\d+(?::\d+)?(?:\s*-\s*\d+(?::\d+)?)?)*)$/);
+                if (fullLookup) {
+                    bookName = fullLookup[1].trim();
+                    reference = fullLookup[2].trim();
+                }
+            }
+
+            if (!bookName || !reference) throw new Error('Please enter a book name and reference.');
+            bookName = normalizeBibleBookName(bookName);
+
+            return reference
+                .split(',')
+                .map(part => part.trim())
+                .filter(Boolean)
+                .flatMap(part => buildBibleQueriesForReference(bookName, part));
         }
 
         function getBibleLookupLabel(book, ref) {
@@ -3231,9 +3239,10 @@
                 const label = hasMultipleChapters ? `${v.chapter}:${v.verse}` : v.verse;
                 return `[${label}] ${v.text.trim()}`;
             }));
-            const reference = hasMultipleChapters
+            const hasOnlyWholeChapterQueries = queries.every(lookup => /^\D+\s+\d+$/.test(lookup));
+            const reference = hasMultipleChapters && hasOnlyWholeChapterQueries
                 ? `${chapters[0].verses[0].book_name} ${chapters[0].verses[0].chapter}-${chapters[chapters.length - 1].verses[0].chapter}`
-                : chapters[0].reference;
+                : chapters.map(data => data.reference).join(', ');
 
             return { reference, translation: chapters[0].translation_name, text: lines.join('\n') };
         }
@@ -3276,7 +3285,7 @@
                     status.style.display = 'none';
                     result.style.display = 'block';
                 } catch (e) {
-                    status.textContent = 'Verse not found. Try e.g. "John" / "3:16", "Genesis" / "1:1-10", or "Luke" / "5-9".';
+                    status.textContent = 'Verse not found. Try e.g. "John" / "3:16", "Genesis" / "1:1-10", "Luke" / "5-9", or "Luke" / "5:7-8,9:1-2".';
                     status.className = 'error';
                     status.style.display = 'block';
                 }

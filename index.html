@@ -2874,9 +2874,9 @@
             artistInput.disabled = isNursery;
 
             if (isBible) {
-                artistInput.placeholder = 'Book (e.g. John, Genesis)';
+                artistInput.placeholder = 'Book (e.g. John, Genesis, Luke 5-9)';
                 artistInput.disabled = false;
-                songInput.placeholder  = 'Chapter:Verse (e.g. 3:16 or 3:1-20)';
+                songInput.placeholder  = 'Reference (e.g. 3:16, 3:1-20, 5-9)';
             } else if (isMovie) {
                 artistInput.placeholder = 'Movie / TV show name';
                 songInput.placeholder   = 'Song title';
@@ -3121,16 +3121,121 @@
         ttsPopulateVoices();
         // ────────────────────────────────────────────────────────────────
 
-        async function fetchBibleVerse(book, ref) {
+        const bibleBookNames = [
+            'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
+            '1 Samuel', '2 Samuel', '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles',
+            'Ezra', 'Nehemiah', 'Esther', 'Job', 'Psalms', 'Proverbs', 'Ecclesiastes', 'Song of Solomon',
+            'Isaiah', 'Jeremiah', 'Lamentations', 'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos',
+            'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah', 'Malachi',
+            'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', '1 Corinthians', '2 Corinthians',
+            'Galatians', 'Ephesians', 'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians',
+            '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews', 'James', '1 Peter', '2 Peter',
+            '1 John', '2 John', '3 John', 'Jude', 'Revelation'
+        ];
+
+        function normalizeBibleBookKey(value) {
+            return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+        }
+
+        function bibleBookEditDistance(a, b) {
+            const previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+            for (let i = 1; i <= a.length; i++) {
+                const current = [i];
+                for (let j = 1; j <= b.length; j++) {
+                    current[j] = Math.min(
+                        previous[j] + 1,
+                        current[j - 1] + 1,
+                        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+                    );
+                }
+                previous.splice(0, previous.length, ...current);
+            }
+            return previous[b.length];
+        }
+
+        function normalizeBibleBookName(bookName) {
+            const typedKey = normalizeBibleBookKey(bookName);
+            const exact = bibleBookNames.find(name => normalizeBibleBookKey(name) === typedKey);
+            if (exact) return exact;
+
+            let bestMatch = bookName;
+            let bestDistance = Infinity;
+            for (const name of bibleBookNames) {
+                const distance = bibleBookEditDistance(typedKey, normalizeBibleBookKey(name));
+                if (distance < bestDistance) {
+                    bestMatch = name;
+                    bestDistance = distance;
+                }
+            }
+            return bestDistance <= 2 ? bestMatch : bookName;
+        }
+
+        function parseBibleLookup(book, ref) {
+            let bookName = book.trim();
+            let reference = ref.trim();
+
+            if (!reference) {
+                const fullLookup = bookName.match(/^(.+?)\s+(\d+(?::\d+)?(?:\s*-\s*\d+(?::\d+)?)?)$/);
+                if (fullLookup) {
+                    bookName = fullLookup[1].trim();
+                    reference = fullLookup[2].trim();
+                }
+            }
+
+            if (!bookName || !reference) throw new Error('Please enter a book name and reference.');
+            bookName = normalizeBibleBookName(bookName);
+
+            const chapterRange = reference.match(/^(\d+)\s*-\s*(\d+)$/);
+            if (!chapterRange) return [`${bookName} ${reference}`];
+
+            const startChapter = Number(chapterRange[1]);
+            const endChapter = Number(chapterRange[2]);
+            if (endChapter < startChapter) throw new Error('Chapter range must go from low to high.');
+            if (endChapter - startChapter > 20) throw new Error('Please search 20 chapters or fewer at a time.');
+
+            const queries = [];
+            for (let chapter = startChapter; chapter <= endChapter; chapter++) {
+                queries.push(`${bookName} ${chapter}`);
+            }
+            return queries;
+        }
+
+        function getBibleLookupLabel(book, ref) {
+            const queries = parseBibleLookup(book, ref);
+            if (queries.length === 1) return queries[0];
+
+            const firstMatch = queries[0].match(/^(.*)\s+(\d+)$/);
+            const lastMatch = queries[queries.length - 1].match(/^(.*)\s+(\d+)$/);
+            if (firstMatch && lastMatch && firstMatch[1] === lastMatch[1]) {
+                return `${firstMatch[1]} ${firstMatch[2]}-${lastMatch[2]}`;
+            }
+            return queries.join(', ');
+        }
+
+        async function fetchBibleVerse(book, ref = '') {
             const translation = document.getElementById('bible-translation').value;
-            const query = encodeURIComponent(`${book} ${ref}`);
-            const res = await fetch(`https://bible-api.com/${query}?translation=${translation}`, { signal: AbortSignal.timeout(8000) });
-            if (!res.ok) throw new Error('Verse not found');
-            const data = await res.json();
-            if (data.error) throw new Error(data.error);
-            // Format: each verse on its own line with verse number
-            const lines = data.verses.map(v => `[${v.verse}] ${v.text.trim()}`);
-            return { reference: data.reference, translation: data.translation_name, text: lines.join('\n') };
+            const queries = parseBibleLookup(book, ref);
+            const chapters = [];
+
+            for (const lookup of queries) {
+                const query = encodeURIComponent(lookup);
+                const res = await fetch(`https://bible-api.com/${query}?translation=${translation}`, { signal: AbortSignal.timeout(8000) });
+                if (!res.ok) throw new Error('Verse not found');
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                chapters.push(data);
+            }
+
+            const hasMultipleChapters = chapters.length > 1;
+            const lines = chapters.flatMap(data => data.verses.map(v => {
+                const label = hasMultipleChapters ? `${v.chapter}:${v.verse}` : v.verse;
+                return `[${label}] ${v.text.trim()}`;
+            }));
+            const reference = hasMultipleChapters
+                ? `${chapters[0].verses[0].book_name} ${chapters[0].verses[0].chapter}-${chapters[chapters.length - 1].verses[0].chapter}`
+                : chapters[0].reference;
+
+            return { reference, translation: chapters[0].translation_name, text: lines.join('\n') };
         }
 
         async function searchLyrics() {
@@ -3148,18 +3253,18 @@
 
             // ── Bible mode ───────────────────────────────────────────────
             if (isBible) {
-                if (!artistRaw || !song) {
-                    status.textContent = 'Please enter a book name and a chapter:verse reference.';
+                if (!artistRaw) {
+                    status.textContent = 'Please enter a book name and reference.';
                     status.className = 'error';
                     status.style.display = 'block';
                     result.style.display = 'none';
                     return;
                 }
-                status.textContent = 'Looking up verse...';
-                status.className = '';
-                status.style.display = 'block';
-                result.style.display = 'none';
                 try {
+                    status.textContent = `Looking up ${getBibleLookupLabel(artistRaw, song)}...`;
+                    status.className = '';
+                    status.style.display = 'block';
+                    result.style.display = 'none';
                     let { reference, translation, text } = await fetchBibleVerse(artistRaw, song);
                     const selectedLang = canTranslate() ? (document.getElementById('translate-lang').value || '') : '';
                     if (selectedLang) { status.textContent = 'Translating...'; text = await translateLyrics(text, selectedLang); }
@@ -3171,7 +3276,7 @@
                     status.style.display = 'none';
                     result.style.display = 'block';
                 } catch (e) {
-                    status.textContent = 'Verse not found. Try e.g. "John" / "3:16" or "Genesis" / "1:1-10".';
+                    status.textContent = 'Verse not found. Try e.g. "John" / "3:16", "Genesis" / "1:1-10", or "Luke" / "5-9".';
                     status.className = 'error';
                     status.style.display = 'block';
                 }

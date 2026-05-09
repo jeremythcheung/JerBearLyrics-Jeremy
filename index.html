@@ -2687,6 +2687,14 @@
             return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         }
 
+        function canonicalizeArtistName(artistName) {
+            const normalized = normalizeStr(artistName).replace(/[^a-z0-9]/g, '');
+            if (normalized === 'michaeldimuccio' || normalized === 'michealdimuccio') {
+                return 'Michael DiMuccio';
+            }
+            return artistName;
+        }
+
         function resolveTVTheme(showName, songTitle) {
             const showLower = showName.toLowerCase();
             const songLower = songTitle.toLowerCase();
@@ -3347,7 +3355,7 @@
             }
 
             try {
-                let searchArtist = artist;
+                let searchArtist = canonicalizeArtistName(artist);
                 let searchSong   = song;
 
                 // Resolve known TV/movie theme to proper artist/title before searching
@@ -4076,7 +4084,9 @@
                 { artist: 'Harry Styles', song: 'Watermelon Sugar' },
                 { artist: 'Beyonce', song: 'Crazy in Love' },
                 { artist: 'Shawn Mendes', song: 'Stitches' },
+                { artist: 'Michael DiMuccio', song: 'Found Her First' },
                 { artist: 'Michael DiMuccio', song: 'Plans' },
+                { artist: 'Michael DiMuccio', song: 'The Mark You Left' },
             ]
         };
 

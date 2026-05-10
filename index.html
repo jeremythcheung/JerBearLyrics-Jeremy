@@ -3903,29 +3903,58 @@
             btn.textContent = '⏳ Loading...';
             btn.disabled = true;
             try {
-                const query = `${currentSongInfo.title} ${currentSongInfo.artist} karaoke instrumental`;
-                const res = await fetch(`https://jer-bear-lyrics-jeremy.vercel.app/api/youtube-search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(8000) });
-                const data = await res.json();
-                if (!data.videoId) throw new Error('No video found');
+                const queries = [
+                    `${currentSongInfo.title} ${currentSongInfo.artist} karaoke instrumental`,
+                    `${currentSongInfo.title} ${currentSongInfo.artist} karaoke`,
+                    `${currentSongInfo.title} karaoke`
+                ];
+                const videoIds = [];
+                for (const query of queries) {
+                    try {
+                        const res = await fetch(`/api/youtube-search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(8000) });
+                        const candidate = await res.json();
+                        const ids = candidate.videoIds || (candidate.videoId ? [candidate.videoId] : []);
+                        for (const id of ids) {
+                            if (!videoIds.includes(id)) videoIds.push(id);
+                        }
+                    } catch (_) {}
+                }
+                if (!videoIds.length) throw new Error('No video found');
 
                 ytPlayer = null;
                 document.getElementById('karaoke-yt').innerHTML = '';
 
-                const createPlayer = (videoId) => {
+                let videoIndex = 0;
+                const tryNextVideo = () => {
+                    videoIndex++;
+                    if (videoIndex < videoIds.length && ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+                        ytPlayer.loadVideoById(videoIds[videoIndex]);
+                        return;
+                    }
+                    document.getElementById('karaoke-yt').innerHTML = '';
+                    wrap.classList.remove('visible');
+                    btn.textContent = '❌ Not Found';
+                    setTimeout(() => { btn.textContent = '🎵 Instrumental'; }, 2000);
+                };
+
+                const createPlayer = () => {
                     ytPlayer = new YT.Player('karaoke-yt', {
-                        videoId,
+                        videoId: videoIds[videoIndex],
                         width: '100%',
                         height: '100%',
                         playerVars: { autoplay: 1, rel: 0 },
-                        events: { onReady: e => e.target.playVideo() }
+                        events: {
+                            onReady: e => e.target.playVideo(),
+                            onError: tryNextVideo
+                        }
                     });
                     wrap.classList.add('visible');
                 };
 
                 if (window.YT && window.YT.Player) {
-                    createPlayer(data.videoId);
+                    createPlayer();
                 } else {
-                    window.onYouTubeIframeAPIReady = () => createPlayer(data.videoId);
+                    window.onYouTubeIframeAPIReady = createPlayer;
                 }
 
                 btn.textContent = '🎵 Instrumental';

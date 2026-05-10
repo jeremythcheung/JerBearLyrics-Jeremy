@@ -11,15 +11,16 @@ module.exports = async function handler(req, res) {
     if (!apiKey) return res.status(500).json({ error: 'YouTube API not configured' });
 
     try {
-        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q=${encodeURIComponent(q)}&key=${apiKey}`;
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=5&q=${encodeURIComponent(q)}&key=${apiKey}`;
         const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
         if (!response.ok) return res.status(502).json({ error: 'YouTube API request failed' });
 
         const data = await response.json();
-        const videoId = data.items?.[0]?.id?.videoId;
+        const videoIds = (data.items || []).map(item => item.id?.videoId).filter(Boolean);
+        const videoId = videoIds[0];
         if (!videoId) return res.status(404).json({ error: 'No video found' });
 
-        res.status(200).json({ videoId });
+        res.status(200).json({ videoId, videoIds });
     } catch (e) {
         res.status(502).json({ error: 'YouTube search failed' });
     }

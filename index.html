@@ -812,8 +812,10 @@
         #karaoke-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.94); z-index:2000; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
         #karaoke-overlay.active { display:flex; }
         #karaoke-title-display { color:#888; font-size:0.9rem; margin-bottom:16px; text-align:center; }
-        #karaoke-box { max-width:680px; width:100%; max-height:60vh; overflow-y:auto; text-align:center; padding:10px; scrollbar-width:none; }
-        #karaoke-box::-webkit-scrollbar { display:none; }
+        #karaoke-box { max-width:680px; width:100%; max-height:60vh; overflow-y:auto; overscroll-behavior:contain; text-align:center; padding:10px 18px; scrollbar-width:thin; scrollbar-color:#1db954 #222; }
+        #karaoke-box::-webkit-scrollbar { width:10px; }
+        #karaoke-box::-webkit-scrollbar-track { background:#222; border-radius:10px; }
+        #karaoke-box::-webkit-scrollbar-thumb { background:#1db954; border-radius:10px; }
         .karaoke-line { font-size:1.2rem; color:#333; padding:10px 0; transition:all 0.3s; line-height:1.6; }
         .karaoke-line.active { color:#1db954; font-size:1.6rem; font-weight:700; }
         .karaoke-line.past { color:#555; }
@@ -3800,6 +3802,7 @@
         let karaokeRunning = false;
         let karaokeElapsed = 0;
         let ytPlayer = null;
+        let karaokeManualScrollUntil = 0;
 
         function loadYTScript() {
             if (window.YT || document.querySelector('script[src*="youtube.com/iframe_api"]')) return;
@@ -3835,6 +3838,15 @@
             karaokeLines = parseSyncedLyrics(currentSyncedLyrics);
             if (!karaokeLines.length) return;
             const box = document.getElementById('karaoke-box');
+            box.tabIndex = 0;
+            box.onwheel = () => karaokeManualScrollUntil = Date.now() + 8000;
+            box.ontouchstart = () => karaokeManualScrollUntil = Date.now() + 8000;
+            box.onpointerdown = () => karaokeManualScrollUntil = Date.now() + 8000;
+            box.onkeydown = e => {
+                if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(e.key)) {
+                    karaokeManualScrollUntil = Date.now() + 8000;
+                }
+            };
             box.innerHTML = karaokeLines.map((l, i) => `<div class="karaoke-line" id="kl-${i}">${l.text}</div>`).join('');
             document.getElementById('karaoke-title-display').textContent = `${currentSongInfo.title} — ${currentSongInfo.artist}`;
             document.getElementById('karaoke-overlay').classList.add('active');
@@ -3842,6 +3854,7 @@
             clearInterval(karaokeTimer);
             karaokeRunning = false;
             karaokeElapsed = 0;
+            karaokeManualScrollUntil = 0;
         }
 
         function karaokeToggle() {
@@ -3877,7 +3890,7 @@
                 if (!el) return;
                 el.className = 'karaoke-line' + (i === activeIdx ? ' active' : i < activeIdx ? ' past' : '');
             });
-            if (activeIdx >= 0) {
+            if (activeIdx >= 0 && Date.now() > karaokeManualScrollUntil) {
                 const el = document.getElementById(`kl-${activeIdx}`);
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }

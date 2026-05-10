@@ -3928,6 +3928,10 @@
             btn.textContent = '⏳ Loading...';
             btn.disabled = true;
             try {
+                const youtubeSearchApiUrls = [
+                    '/api/youtube-search',
+                    'https://jer-bear-lyrics-jeremy.vercel.app/api/youtube-search'
+                ];
                 const queries = [
                     `${currentSongInfo.title} ${currentSongInfo.artist} karaoke instrumental`,
                     `${currentSongInfo.title} ${currentSongInfo.artist} karaoke`,
@@ -3935,14 +3939,17 @@
                 ];
                 const videoIds = [];
                 for (const query of queries) {
-                    try {
-                        const res = await fetch(`/api/youtube-search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(8000) });
-                        const candidate = await res.json();
-                        const ids = candidate.videoIds || (candidate.videoId ? [candidate.videoId] : []);
-                        for (const id of ids) {
-                            if (!videoIds.includes(id)) videoIds.push(id);
-                        }
-                    } catch (_) {}
+                    for (const apiUrl of youtubeSearchApiUrls) {
+                        try {
+                            const res = await fetch(`${apiUrl}?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(8000) });
+                            const candidate = await res.json();
+                            const ids = candidate.videoIds || (candidate.videoId ? [candidate.videoId] : []);
+                            for (const id of ids) {
+                                if (!videoIds.includes(id)) videoIds.push(id);
+                            }
+                            if (videoIds.length) break;
+                        } catch (_) {}
+                    }
                 }
                 if (!videoIds.length) throw new Error('No video found');
 

@@ -1192,6 +1192,20 @@
                 }
             } catch (_) {}
 
+            // Source 2a: same-site LRCLIB proxy fallback
+            try {
+                const lrcProxyRes = await fetch(`/api/lrclib-lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`, { signal: AbortSignal.timeout(7000) });
+                const lrcProxyData = await lrcProxyRes.json();
+                if (lrcProxyData.lyrics && !lrcProxyData.error) {
+                    return {
+                        lyrics: lrcProxyData.lyrics.trim(),
+                        artist: lrcProxyData.artist || artist,
+                        title: lrcProxyData.title || title,
+                        syncedLyrics: lrcProxyData.syncedLyrics || null
+                    };
+                }
+            } catch (_) {}
+
             // Source 2b: lrclib.net (title-only fallback — helps with TV/anime themes)
             try {
                 const lrcRes  = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(title)}`, { signal: AbortSignal.timeout(5000) });
@@ -2695,6 +2709,19 @@
             return artistName;
         }
 
+        function canonicalizeSongTitle(artistName, title) {
+            const artistKey = normalizeStr(artistName).replace(/[^a-z0-9]/g, '');
+            if (artistKey !== 'michaeldimuccio') return title;
+
+            const titleKey = normalizeStr(title).replace(/[^a-z0-9]/g, '');
+            const michaelDimuccioSongs = {
+                foundherfirst: 'Found Her First',
+                plans: 'Plans',
+                themarkyouleft: 'The Mark You Left'
+            };
+            return michaelDimuccioSongs[titleKey] || title;
+        }
+
         function resolveTVTheme(showName, songTitle) {
             const showLower = showName.toLowerCase();
             const songLower = songTitle.toLowerCase();
@@ -3356,7 +3383,7 @@
 
             try {
                 let searchArtist = canonicalizeArtistName(artist);
-                let searchSong   = song;
+                let searchSong   = canonicalizeSongTitle(searchArtist, song);
 
                 // Resolve known TV/movie theme to proper artist/title before searching
                 if (isMovie) {

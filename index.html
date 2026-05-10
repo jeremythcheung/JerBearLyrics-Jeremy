@@ -2630,6 +2630,7 @@
             { shows: ['the boys'],                                                             songKeys: ['theme','the boys theme'],                              artist: 'Christopher Lennertz',                  title: 'The Boys Theme' },
             { shows: ['squid game'],                                                           songKeys: ['theme','way back then','squid game theme'],            artist: 'Jung Jae-il',                           title: 'Way Back Then' },
             { shows: ['ted lasso'],                                                            songKeys: ['theme','ted lasso theme'],                             artist: 'Tom Howe',                              title: 'Ted Lasso Theme' },
+            { shows: ['high school musical','hsm'],                                             songKeys: ['we are all in this together',"we're all in this together",'all in this together'], artist: 'High School Musical Cast', title: "We're All in This Together" },
             { shows: ['the last of us','last of us'],                                          songKeys: ['theme','the last of us theme','longing'],              artist: 'Gustavo Santaolalla',                   title: 'The Last of Us Theme' },
             { shows: ['house of the dragon','hotd'],                                           songKeys: ['theme','house of the dragon theme'],                  artist: 'Ramin Djawadi',                         title: 'House of the Dragon Theme' },
             { shows: ['the witcher','witcher'],                                                songKeys: ['theme','toss a coin','witcher theme'],                 artist: 'Jaskier',                               title: 'Toss a Coin to Your Witcher' },
@@ -3416,7 +3417,7 @@
                                 document.getElementById('song-meta').style.display = 'none';
                             }
                             currentSyncedLyrics = plainToFakeSynced(lyr);
-                            currentSongInfo = { title: displayTitle, artist: artistRaw };
+                            currentSongInfo = { title: displayTitle, artist: matchTheme?.artist || artistRaw, source: artistRaw };
                             document.getElementById('karaoke-btn').style.display = 'inline-block';
                             incrementSearchCount();
                             status.style.display = 'none';
@@ -3442,7 +3443,7 @@
                                 document.getElementById('song-meta').style.display = 'none';
                             }
                             currentSyncedLyrics = plainToFakeSynced(lyr);
-                            currentSongInfo = { title: resolved.title, artist: artistRaw };
+                            currentSongInfo = { title: resolved.title, artist: resolved.artist, source: artistRaw };
                             document.getElementById('karaoke-btn').style.display = 'inline-block';
                             incrementSearchCount();
                             status.style.display = 'none';
@@ -3502,7 +3503,7 @@
                     document.getElementById('lyrics-box').textContent = found.lyrics;
                     document.getElementById('song-meta').style.display = 'none';
                     currentSyncedLyrics = found.syncedLyrics || plainToFakeSynced(found.lyrics);
-                    currentSongInfo = { title: found.title, artist: found.artist };
+                    currentSongInfo = { title: found.title, artist: found.artist, source: isMovie ? artistRaw : '' };
                     document.getElementById('karaoke-btn').style.display = 'inline-block';
                     status.style.display = 'none';
                     result.style.display = 'block';
@@ -3798,7 +3799,7 @@
 
         // ── Globals ──────────────────────────────────────────────────────────
         let currentSyncedLyrics = null;
-        let currentSongInfo = { title: '', artist: '' };
+        let currentSongInfo = { title: '', artist: '', source: '' };
         let karaokeLines = [];
         let karaokeTimer = null;
         let karaokeStartTime = null;
@@ -3884,6 +3885,23 @@
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
+        function buildInstrumentalQueries() {
+            const title = currentSongInfo.title || '';
+            const artist = currentSongInfo.artist || '';
+            const source = currentSongInfo.source || '';
+            const rawQueries = [
+                `${title} ${artist} karaoke instrumental`,
+                `${title} ${source} karaoke instrumental`,
+                `${title} ${artist} karaoke`,
+                `${title} ${source} karaoke`,
+                `${title} karaoke instrumental`,
+                `${title} karaoke`
+            ];
+            return rawQueries
+                .map(q => q.replace(/\s+/g, ' ').trim())
+                .filter((q, index, list) => q && list.indexOf(q) === index);
+        }
+
         function karaokeToggle() {
             if (karaokeRunning) {
                 karaokeElapsed += (Date.now() - karaokeStartTime) / 1000;
@@ -3934,11 +3952,7 @@
                     '/api/youtube-search',
                     'https://jer-bear-lyrics-jeremy.vercel.app/api/youtube-search'
                 ];
-                const queries = [
-                    `${currentSongInfo.title} ${currentSongInfo.artist} karaoke instrumental`,
-                    `${currentSongInfo.title} ${currentSongInfo.artist} karaoke`,
-                    `${currentSongInfo.title} karaoke`
-                ];
+                const queries = buildInstrumentalQueries();
                 const videoIds = [];
                 for (const query of queries) {
                     for (const apiUrl of youtubeSearchApiUrls) {

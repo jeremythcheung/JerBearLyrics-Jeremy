@@ -816,7 +816,8 @@
         #karaoke-box::-webkit-scrollbar { width:10px; }
         #karaoke-box::-webkit-scrollbar-track { background:#222; border-radius:10px; }
         #karaoke-box::-webkit-scrollbar-thumb { background:#1db954; border-radius:10px; }
-        .karaoke-line { font-size:1.2rem; color:#333; padding:10px 0; transition:all 0.3s; line-height:1.6; }
+        .karaoke-line { font-size:1.2rem; color:#333; padding:10px 0; transition:all 0.3s; line-height:1.6; cursor:pointer; }
+        .karaoke-line:hover { color:#888; }
         .karaoke-line.active { color:#1db954; font-size:1.6rem; font-weight:700; }
         .karaoke-line.past { color:#555; }
         #karaoke-controls { display:flex; gap:12px; margin-top:20px; flex-wrap:wrap; justify-content:center; align-items:center; }
@@ -1040,7 +1041,7 @@
         <div id="karaoke-controls">
             <div id="karaoke-offset-wrap">
                 <span>Offset (s):</span>
-                <input type="number" id="karaoke-offset" value="0" step="0.5" min="-10" max="10" />
+                <input type="number" id="karaoke-offset" value="0" step="0.5" min="-300" max="300" />
             </div>
             <button id="karaoke-start-btn" onclick="karaokeToggle()">▶ Start</button>
             <button id="karaoke-instrumental-btn" onclick="loadInstrumental()">🎵 Instrumental</button>
@@ -3847,7 +3848,11 @@
                     karaokeManualScrollUntil = Date.now() + 8000;
                 }
             };
-            box.innerHTML = karaokeLines.map((l, i) => `<div class="karaoke-line" id="kl-${i}">${l.text}</div>`).join('');
+            box.onclick = e => {
+                const line = e.target.closest('.karaoke-line');
+                if (line && box.contains(line)) syncKaraokeToLine(Number(line.dataset.karaokeIndex));
+            };
+            box.innerHTML = karaokeLines.map((l, i) => `<div class="karaoke-line" id="kl-${i}" data-karaoke-index="${i}">${l.text}</div>`).join('');
             document.getElementById('karaoke-title-display').textContent = `${currentSongInfo.title} — ${currentSongInfo.artist}`;
             document.getElementById('karaoke-overlay').classList.add('active');
             document.getElementById('karaoke-start-btn').textContent = '▶ Start';
@@ -3855,6 +3860,26 @@
             karaokeRunning = false;
             karaokeElapsed = 0;
             karaokeManualScrollUntil = 0;
+        }
+
+        function getKaraokeBaseElapsed() {
+            if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+                try { return ytPlayer.getCurrentTime(); } catch(e) {}
+            }
+            if (karaokeRunning) return karaokeElapsed + (Date.now() - karaokeStartTime) / 1000;
+            return karaokeElapsed;
+        }
+
+        function syncKaraokeToLine(index) {
+            const line = karaokeLines[index];
+            if (!line) return;
+            const offsetInput = document.getElementById('karaoke-offset');
+            const offset = line.time - getKaraokeBaseElapsed();
+            offsetInput.value = (Math.round(offset * 10) / 10).toString();
+            karaokeManualScrollUntil = 0;
+            karaokeTick();
+            const el = document.getElementById(`kl-${index}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         function karaokeToggle() {

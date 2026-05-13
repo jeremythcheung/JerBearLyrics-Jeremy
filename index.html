@@ -3266,29 +3266,12 @@
 
         async function fetchBibleVerse(book, ref = '') {
             const translation = document.getElementById('bible-translation').value;
-            const queries = parseBibleLookup(book, ref);
-            const chapters = [];
-
-            for (const lookup of queries) {
-                const query = encodeURIComponent(lookup);
-                const res = await fetch(`https://bible-api.com/${query}?translation=${translation}`, { signal: AbortSignal.timeout(8000) });
-                if (!res.ok) throw new Error('Verse not found');
-                const data = await res.json();
-                if (data.error) throw new Error(data.error);
-                chapters.push(data);
-            }
-
-            const hasMultipleChapters = chapters.length > 1;
-            const lines = chapters.flatMap(data => data.verses.map(v => {
-                const label = hasMultipleChapters ? `${v.chapter}:${v.verse}` : v.verse;
-                return `[${label}] ${v.text.trim()}`;
-            }));
-            const hasOnlyWholeChapterQueries = queries.every(lookup => /^\D+\s+\d+$/.test(lookup));
-            const reference = hasMultipleChapters && hasOnlyWholeChapterQueries
-                ? `${chapters[0].verses[0].book_name} ${chapters[0].verses[0].chapter}-${chapters[chapters.length - 1].verses[0].chapter}`
-                : chapters.map(data => data.reference).join(', ');
-
-            return { reference, translation: chapters[0].translation_name, text: lines.join('\n') };
+            const res = await fetch(`/api/bible-verse?book=${encodeURIComponent(book)}&ref=${encodeURIComponent(ref)}&translation=${encodeURIComponent(translation)}`, {
+                signal: AbortSignal.timeout(10000)
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) throw new Error(data.error || 'Verse not found');
+            return data;
         }
 
         async function searchLyrics() {

@@ -1,3 +1,5 @@
+const { fetchGeniusSong } = require('./_genius');
+
 function normalizeStr(s) {
     return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
@@ -154,6 +156,15 @@ module.exports = async function handler(req, res) {
     if (!artist || !title) return res.status(400).json({ error: 'Missing artist or title' });
 
     try {
+        const geniusMeta = await fetchGeniusSong(artist, title, process.env.GENIUS_ACCESS_TOKEN || '');
+        if (geniusMeta && geniusMeta.date) {
+            return res.status(200).json({
+                artist: geniusMeta.artist || artist,
+                date: geniusMeta.date,
+                source: 'Genius'
+            });
+        }
+
         const musicBrainzMeta = await fetchMusicBrainzMeta(artist, title);
         if (musicBrainzMeta) return res.status(200).json(musicBrainzMeta);
 

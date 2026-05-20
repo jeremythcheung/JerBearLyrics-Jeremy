@@ -1177,6 +1177,19 @@
         }
 
         async function fetchLyrics(artist, title) {
+            try {
+                const geniusRes  = await fetch(`/api/genius-lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`, { signal: AbortSignal.timeout(10000) });
+                const geniusData = await geniusRes.json();
+                if (geniusData.lyrics && !geniusData.error) {
+                    return {
+                        lyrics: geniusData.lyrics.trim(),
+                        artist: geniusData.artist || artist,
+                        title: geniusData.title || title,
+                        date: geniusData.date || null,
+                        source: geniusData.source || 'Genius'
+                    };
+                }
+            } catch (_) {}
             // Source 1: lyrics.ovh (direct fetch — no suggest override to avoid wrong matches)
             try {
                 const lyricsRes  = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`, { signal: AbortSignal.timeout(5000) });
@@ -1268,15 +1281,6 @@
                         artist: lyristData.artist || artist,
                         title:  lyristData.title  || title
                     };
-                }
-            } catch (_) {}
-
-            // Source 6: Genius via Vercel function (API search + page scrape)
-            try {
-                const geniusRes  = await fetch(`/api/genius-lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`, { signal: AbortSignal.timeout(10000) });
-                const geniusData = await geniusRes.json();
-                if (geniusData.lyrics && !geniusData.error) {
-                    return { lyrics: geniusData.lyrics.trim(), artist: geniusData.artist || artist, title: geniusData.title || title };
                 }
             } catch (_) {}
 
@@ -3529,14 +3533,22 @@
                     if (wasKaraokeOpen && currentSyncedLyrics) { openKaraoke(); karaokeToggle(); }
 
                     if (!isNursery) {
-                        const metaQuery = isMovie ? `${artistRaw} ${found.title} soundtrack` : found.artist;
-                        hydrateSongMeta({
-                            lookupArtist: found.artist,
-                            lookupTitle: found.title,
-                            artistHtml: meta => isMovie
-                                ? `<strong>Movie / TV Show:</strong> ${artistRaw}`
-                                : `<strong>Artist:</strong> ${meta.artist}`
-                        });
+                        if (found.date) {
+                            renderSongMeta({
+                                artistHtml: isMovie
+                                    ? `<strong>Movie / TV Show:</strong> ${artistRaw}`
+                                    : `<strong>Artist:</strong> ${found.artist}`,
+                                date: found.date
+                            });
+                        } else {
+                            hydrateSongMeta({
+                                lookupArtist: found.artist,
+                                lookupTitle: found.title,
+                                artistHtml: meta => isMovie
+                                    ? `<strong>Movie / TV Show:</strong> ${artistRaw}`
+                                    : `<strong>Artist:</strong> ${meta.artist}`
+                            });
+                        }
                     }
                 } else {
                     status.textContent = 'Lyrics not found. Try a different artist or song name.';

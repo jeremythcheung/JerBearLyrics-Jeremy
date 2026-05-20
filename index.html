@@ -2885,18 +2885,41 @@
 
         async function fetchMeta(artist, title) {
             try {
-                const query = encodeURIComponent(`${artist} ${title}`);
-                const res  = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`, { signal: AbortSignal.timeout(5000) });
+                const res = await fetch(`/api/song-meta?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`, {
+                    signal: AbortSignal.timeout(10000)
+                });
                 const data = await res.json();
-                if (data.results && data.results.length > 0) {
-                    const r = data.results[0];
-                    const date = r.releaseDate
-                        ? new Date(r.releaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-                        : null;
-                    return { artist: r.artistName, date };
-                }
+                if (res.ok && !data.error) return data;
             } catch (_) {}
             return null;
+        }
+
+        function renderSongMeta(meta) {
+            const metaEl = document.getElementById('song-meta');
+            const artistEl = document.getElementById('meta-artist');
+            const dateEl = document.getElementById('meta-date');
+
+            if (!meta) {
+                artistEl.innerHTML = '';
+                dateEl.innerHTML = '';
+                metaEl.style.display = 'none';
+                return;
+            }
+
+            artistEl.innerHTML = meta.artistHtml || '';
+            dateEl.innerHTML = meta.date ? `<strong>Released:</strong> ${meta.date}` : '';
+            metaEl.style.display = (artistEl.innerHTML || dateEl.innerHTML) ? 'flex' : 'none';
+        }
+
+        function hydrateSongMeta({ lookupArtist, lookupTitle, artistHtml, fallbackArtistHtml = '' }) {
+            renderSongMeta(fallbackArtistHtml ? { artistHtml: fallbackArtistHtml, date: null } : null);
+            fetchMeta(lookupArtist, lookupTitle).then(meta => {
+                if (!meta) return;
+                renderSongMeta({
+                    artistHtml: artistHtml ? artistHtml(meta) : (meta.artist ? `<strong>Artist:</strong> ${meta.artist}` : ''),
+                    date: meta.date || null
+                });
+            });
         }
 
         function setMode(selected) {
@@ -3118,6 +3141,7 @@
         function setDisplayedLyrics(displayText) {
             document.getElementById('lyrics-box').textContent = displayText;
             currentTtsText = displayText || '';
+            ttsPopulateVoices(ttsActiveLang());
         }
 
         function ttsToggle() {
@@ -3137,7 +3161,7 @@
             const rate = parseFloat(document.getElementById('tts-rate').value);
             const utt  = new SpeechSynthesisUtterance(text);
             utt.voice  = ttsGetVoice();
-            utt.lang   = utt.voice ? utt.voice.lang : ttsActiveLang();
+            utt.lang   = ttsActiveLang();
             utt.rate   = rate;
             utt.onend  = utt.onerror = ttsStop;
             speechSynthesis.cancel();
@@ -3399,13 +3423,12 @@
                             document.getElementById('song-title').textContent = displayTitle;
                             document.getElementById('song-artist').textContent = `From: ${artistRaw}`;
                             setDisplayedLyrics(lyr);
-                            if (matchTheme && matchTheme.meta) {
-                                document.getElementById('meta-artist').innerHTML = `<strong>Artist:</strong> ${matchTheme.meta.artist}`;
-                                document.getElementById('meta-date').innerHTML = `<strong>Released:</strong> ${matchTheme.meta.date}`;
-                                document.getElementById('song-meta').style.display = 'flex';
-                            } else {
-                                document.getElementById('song-meta').style.display = 'none';
-                            }
+                            hydrateSongMeta({
+                                lookupArtist: matchTheme?.meta?.artist || matchTheme?.artist || artistRaw,
+                                lookupTitle: displayTitle,
+                                fallbackArtistHtml: matchTheme?.meta?.artist ? `<strong>Artist:</strong> ${matchTheme.meta.artist}` : '',
+                                artistHtml: meta => `<strong>Artist:</strong> ${meta.artist}`
+                            });
                             currentSyncedLyrics = plainToFakeSynced(originalLyrics);
                             currentSongInfo = { title: displayTitle, artist: matchTheme?.artist || artistRaw, source: artistRaw };
                             document.getElementById('karaoke-btn').style.display = 'inline-block';
@@ -3426,13 +3449,12 @@
                             document.getElementById('song-title').textContent = resolved.title;
                             document.getElementById('song-artist').textContent = `From: ${artistRaw}`;
                             setDisplayedLyrics(lyr);
-                            if (resolved.meta) {
-                                document.getElementById('meta-artist').innerHTML = `<strong>Artist:</strong> ${resolved.meta.artist}`;
-                                document.getElementById('meta-date').innerHTML = `<strong>Released:</strong> ${resolved.meta.date}`;
-                                document.getElementById('song-meta').style.display = 'flex';
-                            } else {
-                                document.getElementById('song-meta').style.display = 'none';
-                            }
+                            hydrateSongMeta({
+                                lookupArtist: resolved.meta?.artist || resolved.artist,
+                                lookupTitle: resolved.title,
+                                fallbackArtistHtml: resolved.meta?.artist ? `<strong>Artist:</strong> ${resolved.meta.artist}` : '',
+                                artistHtml: meta => `<strong>Artist:</strong> ${meta.artist}`
+                            });
                             currentSyncedLyrics = plainToFakeSynced(originalLyrics);
                             currentSongInfo = { title: resolved.title, artist: resolved.artist, source: artistRaw };
                             document.getElementById('karaoke-btn').style.display = 'inline-block';
@@ -3461,7 +3483,11 @@
                     document.getElementById('song-title').style.visibility = 'visible';
                     document.getElementById('song-artist').style.visibility = 'visible';
                     setDisplayedLyrics(lyr);
-                    document.getElementById('song-meta').style.display = 'none';
+                    hydrateSongMeta({
+                        lookupArtist: hardcodedMatch.artist,
+                        lookupTitle: hardcodedMatch.title,
+                        artistHtml: meta => `<strong>Artist:</strong> ${meta.artist}`
+                    });
                     currentSyncedLyrics = plainToFakeSynced(originalLyrics);
                     currentSongInfo = { title: hardcodedMatch.title, artist: hardcodedMatch.artist };
                     document.getElementById('karaoke-btn').style.display = 'inline-block';
@@ -3494,7 +3520,7 @@
                     document.getElementById('song-title').style.visibility = 'visible';
                     document.getElementById('song-artist').style.visibility = 'visible';
                     setDisplayedLyrics(found.lyrics);
-                    document.getElementById('song-meta').style.display = 'none';
+                    renderSongMeta(null);
                     currentSyncedLyrics = found.syncedLyrics || plainToFakeSynced(originalLyrics);
                     currentSongInfo = { title: found.title, artist: found.artist, source: isMovie ? artistRaw : '' };
                     document.getElementById('karaoke-btn').style.display = 'inline-block';
@@ -3504,15 +3530,12 @@
 
                     if (!isNursery) {
                         const metaQuery = isMovie ? `${artistRaw} ${found.title} soundtrack` : found.artist;
-                        fetchMeta(isMovie ? artistRaw : found.artist, found.title).then(meta => {
-                            if (meta) {
-                                const metaEl = document.getElementById('song-meta');
-                                document.getElementById('meta-artist').innerHTML = isMovie
-                                    ? `<strong>Movie / TV Show:</strong> ${artistRaw}`
-                                    : `<strong>Artist:</strong> ${meta.artist}`;
-                                document.getElementById('meta-date').innerHTML = meta.date ? `<strong>Released:</strong> ${meta.date}` : '';
-                                metaEl.style.display = 'flex';
-                            }
+                        hydrateSongMeta({
+                            lookupArtist: found.artist,
+                            lookupTitle: found.title,
+                            artistHtml: meta => isMovie
+                                ? `<strong>Movie / TV Show:</strong> ${artistRaw}`
+                                : `<strong>Artist:</strong> ${meta.artist}`
                         });
                     }
                 } else {

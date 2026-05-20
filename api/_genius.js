@@ -98,6 +98,18 @@ function buildUrlCandidates(artist, title) {
     return [...candidates];
 }
 
+function extractGeniusPathsFromSearchHtml(html) {
+    const paths = new Set();
+    const regex = /href="(\/[^"#?]*-lyrics)"/gi;
+    let match;
+
+    while ((match = regex.exec(html)) !== null) {
+        paths.add(`https://genius.com${match[1]}`);
+    }
+
+    return [...paths];
+}
+
 async function fetchGeniusPage(url) {
     const res = await fetch(url, {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
@@ -118,6 +130,33 @@ async function fetchGeniusPage(url) {
         date: meta.date || null,
         url
     };
+}
+
+async function fetchViaSiteSearch(artist, title) {
+    const query = encodeURIComponent(`${artist} ${title}`);
+    const res = await fetch(`https://genius.com/search?q=${query}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+        signal: AbortSignal.timeout(8000),
+        redirect: 'follow'
+    });
+    if (!res.ok) return null;
+
+    const html = await res.text();
+    const urls = extractGeniusPathsFromSearchHtml(html);
+    if (!urls.length) return null;
+
+    for (const url of urls.slice(0, 5)) {
+        const page = await fetchGeniusPage(url);
+        if (page) {
+            return {
+                ...page,
+                artist: page.artist || artist,
+                title: page.title || title
+            };
+        }
+    }
+
+    return null;
 }
 
 function scoreSearchHit(hit, artist, title) {
@@ -182,6 +221,18 @@ async function fetchGeniusSong(artist, title, token) {
                 source: 'Genius'
             };
         }
+    }
+
+    const siteSearched = await fetchViaSiteSearch(artist, title);
+    if (siteSearched) {
+        return {
+            lyrics: siteSearched.lyrics,
+            artist: siteSearched.artist || artist,
+            title: siteSearched.title || title,
+            date: siteSearched.date || null,
+            url: siteSearched.url,
+            source: 'Genius'
+        };
     }
 
     const searched = await fetchViaApiSearch(artist, title, token);

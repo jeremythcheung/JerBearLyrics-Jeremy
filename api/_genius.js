@@ -72,7 +72,48 @@ function extractEscapedJsonValue(html, key) {
     return decodeHtmlEntities(match[1].replace(/\\u0026/g, '&').replace(/\\u00a0/gi, ' ')).trim();
 }
 
+function extractRawDataArrayValue(html, key) {
+    const match = html.match(new RegExp(`\\\\"${key}\\\\":\\[\\\\"([^\\\\"]+)\\\\"\\]`, 'i'));
+    if (!match) return null;
+    return decodeHtmlEntities(match[1].replace(/\\u0026/g, '&').replace(/\\u00a0/gi, ' ')).trim();
+}
+
+function extractRawDataValue(html, key) {
+    const match = html.match(new RegExp(`\\\\"${key}\\\\":\\\\"([^\\\\"]+)\\\\"`, 'i'));
+    if (!match) return null;
+    return decodeHtmlEntities(match[1].replace(/\\u0026/g, '&').replace(/\\u00a0/gi, ' ')).trim();
+}
+
+function extractMetaTagContent(html, property) {
+    const escaped = property.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = html.match(new RegExp(`<meta[^>]+(?:property|name)="${escaped}"[^>]+content="([^"]*)"`, 'i'));
+    return match ? decodeHtmlEntities(match[1]).trim() : null;
+}
+
 function extractSongMetaFromHtml(html) {
+    const rawSongTitle = extractRawDataValue(html, 'song_title');
+    const rawArtistName = extractRawDataArrayValue(html, 'artist_name');
+    if (rawSongTitle || rawArtistName) {
+        return {
+            artist: rawArtistName || null,
+            title: rawSongTitle || null,
+            date: extractEscapedJsonValue(html, 'releaseDateForDisplay') || null
+        };
+    }
+
+    const ogTitle = extractMetaTagContent(html, 'og:title');
+    if (ogTitle) {
+        const cleaned = ogTitle.replace(/\s+Lyrics\s*$/i, '').trim();
+        const parts = cleaned.split(/\s+[–-]\s+/);
+        if (parts.length >= 2) {
+            return {
+                artist: parts[0].trim() || null,
+                title: parts.slice(1).join(' - ').trim() || null,
+                date: extractEscapedJsonValue(html, 'releaseDateForDisplay') || null
+            };
+        }
+    }
+
     return {
         artist: extractEscapedJsonValue(html, 'primaryArtistNames') || null,
         title: extractEscapedJsonValue(html, 'title') || null,

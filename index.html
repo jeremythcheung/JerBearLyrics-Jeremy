@@ -3562,7 +3562,9 @@
             }
         }
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js');
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                registrations.forEach(registration => registration.unregister());
+            }).catch(() => {});
         }
 
         let isSignUp = false;

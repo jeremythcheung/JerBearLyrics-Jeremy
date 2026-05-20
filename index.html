@@ -3115,6 +3115,11 @@
             return ordered[parseInt(select.value)] || voices[0];
         }
 
+        function setDisplayedLyrics(displayText, spokenText = displayText) {
+            document.getElementById('lyrics-box').textContent = displayText;
+            currentTtsText = spokenText || displayText || '';
+        }
+
         function ttsToggle() {
             const btn = document.getElementById('tts-play');
             if (speechSynthesis.speaking && !speechSynthesis.paused) {
@@ -3127,7 +3132,7 @@
                 btn.innerHTML = '&#9646;&#9646; Pause';
                 return;
             }
-            const text = document.getElementById('lyrics-box').textContent;
+            const text = currentTtsText || document.getElementById('lyrics-box').textContent;
             if (!text.trim()) return;
             const rate = parseFloat(document.getElementById('tts-rate').value);
             const utt  = new SpeechSynthesisUtterance(text);
@@ -3148,12 +3153,6 @@
             const stop = document.getElementById('tts-stop');
             if (stop) stop.style.display = 'none';
         }
-
-        // Re-populate voices when translation language changes
-        document.getElementById('translate-lang').addEventListener('change', function() {
-            ttsStop();
-            ttsPopulateVoices(TTS_LANG_MAP[this.value] || 'en');
-        });
 
         // Rate label update
         document.getElementById('tts-rate').addEventListener('input', function() {
@@ -3276,6 +3275,7 @@
 
         async function searchLyrics() {
             ttsStop();
+            currentTtsText = '';
             const wasKaraokeOpen = document.getElementById('karaoke-overlay').classList.contains('active');
             karaokeClose();
             const isNursery = document.getElementById('nursery-mode').checked;
@@ -3302,11 +3302,12 @@
                     status.style.display = 'block';
                     result.style.display = 'none';
                     let { reference, translation, text } = await fetchBibleVerse(artistRaw, song);
+                    const originalText = text;
                     const selectedLang = canTranslate() ? (document.getElementById('translate-lang').value || '') : '';
                     if (selectedLang) { status.textContent = 'Translating...'; text = await translateLyrics(text, selectedLang); }
                     document.getElementById('song-title').textContent = reference;
                     document.getElementById('song-artist').textContent = translation;
-                    document.getElementById('lyrics-box').textContent = text;
+                    setDisplayedLyrics(text, originalText);
                     document.getElementById('song-meta').style.display = 'none';
                     incrementSearchCount();
                     status.style.display = 'none';
@@ -3357,12 +3358,13 @@
                 const key = song.toLowerCase().trim();
                 let found = nurseryRhymes[key];
                 if (found) {
+                    const originalLyrics = found;
                     const selectedLang = canTranslate() ? (document.getElementById('translate-lang').value || '') : '';
                     if (selectedLang) { status.textContent = 'Translating...'; found = await translateLyrics(found, selectedLang); }
                     incrementSearchCount();
                     document.getElementById('song-title').textContent = song;
                     document.getElementById('song-artist').textContent = 'Nursery Rhyme';
-                    document.getElementById('lyrics-box').textContent = found;
+                    setDisplayedLyrics(found, originalLyrics);
                     document.getElementById('song-meta').style.display = 'none';
                     status.style.display = 'none';
                     result.style.display = 'block';
@@ -3387,11 +3389,12 @@
                             const matchTheme   = pokemonThemes.find(t => t.songKeys.some(k => directKey.includes(k) || directKeyAlt.includes(k)));
                             const displayTitle = matchTheme ? matchTheme.title : song;
                             let lyr = pokemonLyrics[directKey] || pokemonLyrics[directKeyAlt];
+                            const originalLyrics = lyr;
                             const selectedLang = canTranslate() ? (document.getElementById('translate-lang').value || '') : '';
                             if (selectedLang) { status.textContent = 'Translating...'; lyr = await translateLyrics(lyr, selectedLang); }
                             document.getElementById('song-title').textContent = displayTitle;
                             document.getElementById('song-artist').textContent = `From: ${artistRaw}`;
-                            document.getElementById('lyrics-box').textContent = lyr;
+                            setDisplayedLyrics(lyr, originalLyrics);
                             if (matchTheme && matchTheme.meta) {
                                 document.getElementById('meta-artist').innerHTML = `<strong>Artist:</strong> ${matchTheme.meta.artist}`;
                                 document.getElementById('meta-date').innerHTML = `<strong>Released:</strong> ${matchTheme.meta.date}`;
@@ -3399,7 +3402,7 @@
                             } else {
                                 document.getElementById('song-meta').style.display = 'none';
                             }
-                            currentSyncedLyrics = plainToFakeSynced(lyr);
+                            currentSyncedLyrics = plainToFakeSynced(originalLyrics);
                             currentSongInfo = { title: displayTitle, artist: matchTheme?.artist || artistRaw, source: artistRaw };
                             document.getElementById('karaoke-btn').style.display = 'inline-block';
                             incrementSearchCount();
@@ -3413,11 +3416,12 @@
                     if (resolved) {
                         if (resolved.hardcodedLyrics) {
                             let lyr = resolved.hardcodedLyrics;
+                            const originalLyrics = lyr;
                             const selectedLang = canTranslate() ? (document.getElementById('translate-lang').value || '') : '';
                             if (selectedLang) { status.textContent = 'Translating...'; lyr = await translateLyrics(lyr, selectedLang); }
                             document.getElementById('song-title').textContent = resolved.title;
                             document.getElementById('song-artist').textContent = `From: ${artistRaw}`;
-                            document.getElementById('lyrics-box').textContent = lyr;
+                            setDisplayedLyrics(lyr, originalLyrics);
                             if (resolved.meta) {
                                 document.getElementById('meta-artist').innerHTML = `<strong>Artist:</strong> ${resolved.meta.artist}`;
                                 document.getElementById('meta-date').innerHTML = `<strong>Released:</strong> ${resolved.meta.date}`;
@@ -3425,7 +3429,7 @@
                             } else {
                                 document.getElementById('song-meta').style.display = 'none';
                             }
-                            currentSyncedLyrics = plainToFakeSynced(lyr);
+                            currentSyncedLyrics = plainToFakeSynced(originalLyrics);
                             currentSongInfo = { title: resolved.title, artist: resolved.artist, source: artistRaw };
                             document.getElementById('karaoke-btn').style.display = 'inline-block';
                             incrementSearchCount();
@@ -3444,6 +3448,7 @@
                 const hardcodedMatch = hardcodedSongs[hardcodedKey];
                 if (hardcodedMatch) {
                     let lyr = hardcodedMatch.lyrics;
+                    const originalLyrics = lyr;
                     const selectedLang = canTranslate() ? (document.getElementById('translate-lang').value || '') : '';
                     if (selectedLang) { status.textContent = 'Translating...'; lyr = await translateLyrics(lyr, selectedLang); }
                     incrementSearchCount();
@@ -3451,9 +3456,9 @@
                     document.getElementById('song-artist').textContent = hardcodedMatch.artist;
                     document.getElementById('song-title').style.visibility = 'visible';
                     document.getElementById('song-artist').style.visibility = 'visible';
-                    document.getElementById('lyrics-box').textContent = lyr;
+                    setDisplayedLyrics(lyr, originalLyrics);
                     document.getElementById('song-meta').style.display = 'none';
-                    currentSyncedLyrics = plainToFakeSynced(lyr);
+                    currentSyncedLyrics = plainToFakeSynced(originalLyrics);
                     currentSongInfo = { title: hardcodedMatch.title, artist: hardcodedMatch.artist };
                     document.getElementById('karaoke-btn').style.display = 'inline-block';
                     status.style.display = 'none';
@@ -3472,6 +3477,7 @@
                 }
 
                 if (found) {
+                    const originalLyrics = found.lyrics;
                     const selectedLang = canTranslate() ? (document.getElementById('translate-lang').value || '') : '';
                     if (selectedLang) {
                         status.textContent = 'Translating...';
@@ -3483,9 +3489,9 @@
                     document.getElementById('song-artist').textContent = isNursery ? 'Nursery Rhyme' : isMovie ? `From: ${artistRaw}` : found.artist;
                     document.getElementById('song-title').style.visibility = 'visible';
                     document.getElementById('song-artist').style.visibility = 'visible';
-                    document.getElementById('lyrics-box').textContent = found.lyrics;
+                    setDisplayedLyrics(found.lyrics, originalLyrics);
                     document.getElementById('song-meta').style.display = 'none';
-                    currentSyncedLyrics = found.syncedLyrics || plainToFakeSynced(found.lyrics);
+                    currentSyncedLyrics = found.syncedLyrics || plainToFakeSynced(originalLyrics);
                     currentSongInfo = { title: found.title, artist: found.artist, source: isMovie ? artistRaw : '' };
                     document.getElementById('karaoke-btn').style.display = 'inline-block';
                     status.style.display = 'none';
@@ -3782,6 +3788,7 @@
 
         // ── Globals ──────────────────────────────────────────────────────────
         let currentSyncedLyrics = null;
+        let currentTtsText = '';
         let currentSongInfo = { title: '', artist: '', source: '' };
         let karaokeLines = [];
         let karaokeTimer = null;

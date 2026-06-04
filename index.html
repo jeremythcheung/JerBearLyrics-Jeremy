@@ -1177,10 +1177,13 @@
         }
 
         function getTitleSearchVariants(title) {
-            const variants = new Set([title]);
+            const variants = new Set();
             if (/\d/.test(title)) {
-                variants.add(convertNumbersInTitle(title));
                 variants.add(title.replace(/\b20(\d{2})\b/g, (_, year) => `2 thousand ${parseInt(year, 10)}`));
+                variants.add(title);
+                variants.add(convertNumbersInTitle(title));
+            } else {
+                variants.add(title);
             }
             return [...variants].filter(Boolean);
         }

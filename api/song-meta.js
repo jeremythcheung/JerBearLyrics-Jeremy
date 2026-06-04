@@ -14,6 +14,16 @@ function normalizeMetaText(s) {
 
 function formatReleaseDate(dateStr) {
     if (!dateStr) return null;
+    const isoDate = String(dateStr).match(/^\d{4}-\d{2}-\d{2}/);
+    if (isoDate) {
+        return new Date(`${isoDate[0]}T00:00:00Z`).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            timeZone: 'UTC'
+        });
+    }
+
     const parts = String(dateStr).split('-');
     if (parts.length === 3) {
         return new Date(`${parts[0]}-${parts[1]}-${parts[2]}T00:00:00Z`).toLocaleDateString('en-US', {

@@ -1176,6 +1176,15 @@
             return title.replace(/\d+/g, m => numberToWords(parseInt(m)));
         }
 
+        function getTitleSearchVariants(title) {
+            const variants = new Set([title]);
+            if (/\d/.test(title)) {
+                variants.add(convertNumbersInTitle(title));
+                variants.add(title.replace(/\b20(\d{2})\b/g, (_, year) => `2 thousand ${parseInt(year, 10)}`));
+            }
+            return [...variants].filter(Boolean);
+        }
+
         async function fetchLyrics(artist, title) {
             try {
                 const geniusRes  = await fetch(`/api/genius-lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`, { signal: AbortSignal.timeout(10000) });
@@ -2915,8 +2924,8 @@
             metaEl.style.display = (artistEl.innerHTML || dateEl.innerHTML) ? 'flex' : 'none';
         }
 
-        function hydrateSongMeta({ lookupArtist, lookupTitle, artistHtml, fallbackArtistHtml = '' }) {
-            renderSongMeta(fallbackArtistHtml ? { artistHtml: fallbackArtistHtml, date: null } : null);
+        function hydrateSongMeta({ lookupArtist, lookupTitle, artistHtml, fallbackArtistHtml = '', fallbackDate = null }) {
+            renderSongMeta((fallbackArtistHtml || fallbackDate) ? { artistHtml: fallbackArtistHtml, date: fallbackDate } : null);
             fetchMeta(lookupArtist, lookupTitle).then(meta => {
                 if (!meta) return;
                 renderSongMeta({
@@ -3501,13 +3510,10 @@
                     return;
                 }
 
-                // Try original title first
-                let found = await fetchLyrics(searchArtist, searchSong);
-
-                // If not found and title has numbers, retry with words
-                if (!found && /\d/.test(searchSong)) {
-                    const convertedSong = convertNumbersInTitle(searchSong);
-                    found = await fetchLyrics(searchArtist, convertedSong);
+                let found = null;
+                for (const titleVariant of getTitleSearchVariants(searchSong)) {
+                    found = await fetchLyrics(searchArtist, titleVariant);
+                    if (found) break;
                 }
 
                 if (found) {
@@ -3533,22 +3539,17 @@
                     if (wasKaraokeOpen && currentSyncedLyrics) { openKaraoke(); karaokeToggle(); }
 
                     if (!isNursery) {
-                        if (found.date) {
-                            renderSongMeta({
-                                artistHtml: isMovie
-                                    ? `<strong>Movie / TV Show:</strong> ${artistRaw}`
-                                    : `<strong>Artist:</strong> ${found.artist}`,
-                                date: found.date
-                            });
-                        } else {
-                            hydrateSongMeta({
-                                lookupArtist: found.artist,
-                                lookupTitle: found.title,
-                                artistHtml: meta => isMovie
-                                    ? `<strong>Movie / TV Show:</strong> ${artistRaw}`
-                                    : `<strong>Artist:</strong> ${meta.artist}`
-                            });
-                        }
+                        hydrateSongMeta({
+                            lookupArtist: found.artist,
+                            lookupTitle: found.title,
+                            fallbackArtistHtml: isMovie
+                                ? `<strong>Movie / TV Show:</strong> ${artistRaw}`
+                                : `<strong>Artist:</strong> ${found.artist}`,
+                            fallbackDate: found.date || null,
+                            artistHtml: meta => isMovie
+                                ? `<strong>Movie / TV Show:</strong> ${artistRaw}`
+                                : `<strong>Artist:</strong> ${meta.artist}`
+                        });
                     }
                 } else {
                     status.textContent = 'Lyrics not found. Try a different artist or song name.';

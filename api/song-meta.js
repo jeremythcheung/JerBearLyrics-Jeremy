@@ -43,6 +43,30 @@ function formatReleaseDate(dateStr) {
     return parts[0];
 }
 
+function getVerifiedMeta(artist, title) {
+    const normalizedArtist = normalizeMetaText(artist);
+    const normalizedTitle = normalizeMetaText(title);
+    const elijahWoodsTitles = new Set([
+        '2010',
+        '2 thousand 10',
+        '2 thousand ten',
+        'two thousand 10',
+        'two thousand ten',
+        'two thousand and ten'
+    ]);
+
+    if (normalizedArtist === 'elijah woods' && elijahWoodsTitles.has(normalizedTitle)) {
+        return {
+            artist: 'elijah woods',
+            title: '2 thousand 10',
+            date: 'July 12, 2024',
+            source: 'Verified'
+        };
+    }
+
+    return null;
+}
+
 function scoreMusicBrainzRecording(recording, artist, title) {
     const wantedArtist = normalizeMetaText(artist);
     const wantedTitle = normalizeMetaText(title);
@@ -166,6 +190,9 @@ module.exports = async function handler(req, res) {
     if (!artist || !title) return res.status(400).json({ error: 'Missing artist or title' });
 
     try {
+        const verifiedMeta = getVerifiedMeta(artist, title);
+        if (verifiedMeta) return res.status(200).json(verifiedMeta);
+
         const geniusMeta = await fetchGeniusSong(artist, title, process.env.GENIUS_ACCESS_TOKEN || '');
         if (geniusMeta && geniusMeta.date) {
             return res.status(200).json({
